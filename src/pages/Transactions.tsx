@@ -5,16 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { 
   Search, 
-  Filter, 
   Plus, 
   ArrowUpRight, 
   ArrowDownRight,
   ArrowRight,
-  CalendarIcon,
   Download,
   SlidersHorizontal
 } from "lucide-react";
@@ -22,24 +18,9 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import BottomNavigation from "@/components/BottomNavigation";
-
-interface Transaction {
-  id: number;
-  type: 'income' | 'expense' | 'transfer';
-  category: string;
-  amount: number;
-  wallet: string;
-  walletTo?: string;
-  date: string;
-  time: string;
-  description: string;
-  status: 'completed' | 'pending' | 'failed';
-}
-
-interface DateRange {
-  from: Date | null;
-  to: Date | null;
-}
+import { useTransactions } from "@/hooks/useTransactions";
+import { useWallets } from "@/hooks/useWallets";
+import { useCategories } from "@/hooks/useCategories";
 
 const Transactions = () => {
   const navigate = useNavigate();
@@ -47,107 +28,11 @@ const Transactions = () => {
   const [selectedType, setSelectedType] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedWallet, setSelectedWallet] = useState("all");
-  const [dateRange, setDateRange] = useState<DateRange>({ from: null, to: null });
   const [showFilters, setShowFilters] = useState(false);
 
-  const transactions: Transaction[] = [
-    {
-      id: 1,
-      type: 'income',
-      category: 'Gaji',
-      amount: 8500000,
-      wallet: 'BCA',
-      date: '2024-01-09',
-      time: '09:00',
-      description: 'Gaji bulan Januari',
-      status: 'completed'
-    },
-    {
-      id: 2,
-      type: 'expense',
-      category: 'Makanan',
-      amount: 45000,
-      wallet: 'DANA',
-      date: '2024-01-09',
-      time: '12:30',
-      description: 'Lunch di kantor',
-      status: 'completed'
-    },
-    {
-      id: 3,
-      type: 'expense',
-      category: 'Transport',
-      amount: 25000,
-      wallet: 'GoPay',
-      date: '2024-01-09',
-      time: '18:00',
-      description: 'Ojek online pulang',
-      status: 'completed'
-    },
-    {
-      id: 4,
-      type: 'transfer',
-      category: 'Transfer',
-      amount: 500000,
-      wallet: 'BCA',
-      walletTo: 'Mandiri',
-      date: '2024-01-09',
-      time: '20:00',
-      description: 'Transfer ke tabungan',
-      status: 'completed'
-    },
-    {
-      id: 5,
-      type: 'expense',
-      category: 'Belanja',
-      amount: 150000,
-      wallet: 'DANA',
-      date: '2024-01-08',
-      time: '16:30',
-      description: 'Belanja bulanan',
-      status: 'completed'
-    },
-    {
-      id: 6,
-      type: 'income',
-      category: 'Freelance',
-      amount: 2000000,
-      wallet: 'BCA',
-      date: '2024-01-08',
-      time: '14:00',
-      description: 'Project website',
-      status: 'pending'
-    },
-    {
-      id: 7,
-      type: 'expense',
-      category: 'Hiburan',
-      amount: 80000,
-      wallet: 'GoPay',
-      date: '2024-01-07',
-      time: '19:30',
-      description: 'Bioskop',
-      status: 'completed'
-    },
-    {
-      id: 8,
-      type: 'expense',
-      category: 'Kesehatan',
-      amount: 300000,
-      wallet: 'Mandiri',
-      date: '2024-01-07',
-      time: '10:00',
-      description: 'Cek dokter',
-      status: 'completed'
-    }
-  ];
-
-  const categories = [
-    'Gaji', 'Freelance', 'Investasi', 'Bonus',
-    'Makanan', 'Transport', 'Belanja', 'Hiburan', 'Kesehatan', 'Pendidikan'
-  ];
-
-  const wallets = ['BCA', 'Mandiri', 'DANA', 'GoPay', 'Cash'];
+  const { data: transactions = [], isLoading: transactionsLoading } = useTransactions();
+  const { data: wallets = [] } = useWallets();
+  const { data: categories = [] } = useCategories();
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
@@ -162,19 +47,6 @@ const Transactions = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'failed':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -184,16 +56,17 @@ const Transactions = () => {
   };
 
   const filteredTransactions = transactions.filter(transaction => {
-    const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transaction.category.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = selectedType === 'all' || transaction.type === selectedType;
-    const matchesCategory = selectedCategory === 'all' || transaction.category === selectedCategory;
-    const matchesWallet = selectedWallet === 'all' || transaction.wallet === selectedWallet;
+    const matchesCategory = selectedCategory === 'all' || 
+      (transaction.categories && transaction.categories.name === selectedCategory);
+    const matchesWallet = selectedWallet === 'all' || 
+      (transaction.wallets && transaction.wallets.name === selectedWallet);
     
     return matchesSearch && matchesType && matchesCategory && matchesWallet;
   });
 
-  const groupedTransactions = filteredTransactions.reduce((groups: Record<string, Transaction[]>, transaction) => {
+  const groupedTransactions = filteredTransactions.reduce((groups: Record<string, any[]>, transaction) => {
     const date = transaction.date;
     if (!groups[date]) {
       groups[date] = [];
@@ -209,6 +82,20 @@ const Transactions = () => {
   const totalExpense = filteredTransactions
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
+
+  if (transactionsLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white p-4">
+          <div className="animate-pulse">
+            <div className="h-4 bg-white/20 rounded mb-2"></div>
+            <div className="h-6 bg-white/20 rounded"></div>
+          </div>
+        </div>
+        <BottomNavigation />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -296,7 +183,7 @@ const Transactions = () => {
           <Card>
             <CardHeader className="pb-4">
               <CardTitle className="text-lg flex items-center">
-                <Filter className="h-5 w-5 mr-2" />
+                <SlidersHorizontal className="h-5 w-5 mr-2" />
                 Filter Transaksi
               </CardTitle>
             </CardHeader>
@@ -326,8 +213,8 @@ const Transactions = () => {
                     <SelectContent>
                       <SelectItem value="all">Semua Kategori</SelectItem>
                       {categories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
+                        <SelectItem key={category.id} value={category.name}>
+                          {category.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -345,46 +232,12 @@ const Transactions = () => {
                     <SelectContent>
                       <SelectItem value="all">Semua Dompet</SelectItem>
                       {wallets.map((wallet) => (
-                        <SelectItem key={wallet} value={wallet}>
-                          {wallet}
+                        <SelectItem key={wallet.id} value={wallet.name}>
+                          {wallet.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Tanggal</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start text-left font-normal">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateRange.from ? (
-                          dateRange.to ? (
-                            <>
-                              {format(dateRange.from, "dd MMM", { locale: id })} -{" "}
-                              {format(dateRange.to, "dd MMM", { locale: id })}
-                            </>
-                          ) : (
-                            format(dateRange.from, "dd MMM yyyy", { locale: id })
-                          )
-                        ) : (
-                          <span>Pilih tanggal</span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        initialFocus
-                        mode="range"
-                        defaultMonth={dateRange.from || undefined}
-                        selected={dateRange.from && dateRange.to ? { from: dateRange.from, to: dateRange.to } : undefined}
-                        onSelect={(range) => setDateRange({ from: range?.from || null, to: range?.to || null })}
-                        numberOfMonths={1}
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
                 </div>
               </div>
 
@@ -396,7 +249,6 @@ const Transactions = () => {
                     setSelectedType('all');
                     setSelectedCategory('all');
                     setSelectedWallet('all');
-                    setDateRange({ from: null, to: null });
                   }}
                 >
                   Reset
@@ -440,17 +292,16 @@ const Transactions = () => {
                           </div>
                           <div>
                             <div className="flex items-center space-x-2">
-                              <p className="font-medium text-gray-900">{transaction.category}</p>
-                              <Badge className={getStatusColor(transaction.status)}>
-                                {transaction.status}
-                              </Badge>
+                              <p className="font-medium text-gray-900">
+                                {transaction.categories?.name || 'Kategori'}
+                              </p>
                             </div>
                             <div className="flex items-center space-x-2">
                               <p className="text-sm text-gray-500">{transaction.time}</p>
                               <Badge variant="outline" className="text-xs">
                                 {transaction.type === 'transfer' 
-                                  ? `${transaction.wallet} → ${transaction.walletTo}`
-                                  : transaction.wallet
+                                  ? `${transaction.wallets?.name} → ${transaction.to_wallets?.name}`
+                                  : transaction.wallets?.name || 'Wallet'
                                 }
                               </Badge>
                             </div>

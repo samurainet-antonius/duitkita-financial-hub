@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,12 +5,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const Register = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { signUp } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     whatsapp: "",
@@ -49,23 +49,21 @@ const Register = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (validateForm()) {
-      // Simulate registration success
-      toast({
-        title: "Registrasi Berhasil!",
-        description: "Akun Anda telah dibuat. Silakan login untuk melanjutkan.",
-      });
-      
-      // Store user data in localStorage (in real app, this would be sent to server)
-      localStorage.setItem('duitkita_user', JSON.stringify({
-        name: formData.name,
-        email: formData.email,
-        whatsapp: formData.whatsapp
-      }));
-      
+    if (!validateForm()) return;
+    
+    setLoading(true);
+    
+    const { error } = await signUp(formData.email, formData.password, {
+      full_name: formData.name,
+      phone: formData.whatsapp
+    });
+    
+    setLoading(false);
+    
+    if (!error) {
       navigate('/login');
     }
   };
@@ -195,9 +193,10 @@ const Register = () => {
 
               <Button 
                 type="submit" 
+                disabled={loading}
                 className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white py-2.5"
               >
-                Daftar Sekarang
+                {loading ? "Mendaftar..." : "Daftar Sekarang"}
               </Button>
             </form>
 

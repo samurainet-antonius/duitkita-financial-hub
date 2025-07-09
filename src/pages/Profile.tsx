@@ -1,22 +1,32 @@
 
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Edit, Mail, Phone, Calendar } from "lucide-react";
+import { useProfile } from "@/hooks/useProfile";
+import { useAuth } from "@/hooks/useAuth";
 
 const Profile = () => {
   const navigate = useNavigate();
-  
-  // Mock user data - in real app this would come from API/auth
-  const user = {
-    name: "John Doe",
-    email: "john.doe@email.com",
-    phone: "08123456789",
-    joinDate: "January 2024",
-    avatar: ""
-  };
+  const { user } = useAuth();
+  const { data: profile, isLoading } = useProfile();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+      </div>
+    );
+  }
+
+  const displayName = profile?.full_name || user?.email || 'User';
+  const joinDate = profile?.created_at 
+    ? new Date(profile.created_at).toLocaleDateString('id-ID', { 
+        year: 'numeric', 
+        month: 'long' 
+      })
+    : 'Unknown';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -50,14 +60,14 @@ const Profile = () => {
           <CardContent className="p-6">
             <div className="flex flex-col items-center text-center space-y-4">
               <Avatar className="w-24 h-24">
-                <AvatarImage src={user.avatar} />
+                <AvatarImage src={profile?.avatar_url || ''} />
                 <AvatarFallback className="text-2xl bg-emerald-100 text-emerald-600">
-                  {user.name.split(' ').map(n => n[0]).join('')}
+                  {displayName.split(' ').map(n => n[0]).join('').toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">{user.name}</h2>
-                <p className="text-gray-500">Member sejak {user.joinDate}</p>
+                <h2 className="text-xl font-bold text-gray-900">{displayName}</h2>
+                <p className="text-gray-500">Member sejak {joinDate}</p>
               </div>
             </div>
           </CardContent>
@@ -73,23 +83,25 @@ const Profile = () => {
               <Mail className="h-5 w-5 text-gray-400" />
               <div>
                 <p className="text-sm font-medium text-gray-500">Email</p>
-                <p className="text-gray-900">{user.email}</p>
+                <p className="text-gray-900">{user?.email}</p>
               </div>
             </div>
             
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-              <Phone className="h-5 w-5 text-gray-400" />
-              <div>
-                <p className="text-sm font-medium text-gray-500">Nomor WhatsApp</p>
-                <p className="text-gray-900">{user.phone}</p>
+            {profile?.phone && (
+              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                <Phone className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Nomor WhatsApp</p>
+                  <p className="text-gray-900">{profile.phone}</p>
+                </div>
               </div>
-            </div>
+            )}
             
             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
               <Calendar className="h-5 w-5 text-gray-400" />
               <div>
                 <p className="text-sm font-medium text-gray-500">Bergabung</p>
-                <p className="text-gray-900">{user.joinDate}</p>
+                <p className="text-gray-900">{joinDate}</p>
               </div>
             </div>
           </CardContent>

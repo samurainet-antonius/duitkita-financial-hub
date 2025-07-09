@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,18 +6,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { signIn, user } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: ""
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -37,22 +44,21 @@ const Login = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (validateForm()) {
-      // Simulate login success
-      toast({
-        title: "Login Berhasil!",
-        description: "Selamat datang kembali di DuitKita.",
-      });
-      
-      // Store login state
-      localStorage.setItem('duitkita_logged_in', 'true');
+    if (!validateForm()) return;
+    
+    setLoading(true);
+    
+    const { error } = await signIn(formData.email, formData.password);
+    
+    setLoading(false);
+    
+    if (!error) {
       if (rememberMe) {
         localStorage.setItem('duitkita_remember', 'true');
       }
-      
       navigate('/dashboard');
     }
   };
@@ -70,13 +76,6 @@ const Login = () => {
         [field]: ""
       }));
     }
-  };
-
-  const handleForgotPassword = () => {
-    toast({
-      title: "Link Reset Password",
-      description: "Link reset password telah dikirim ke email Anda (jika terdaftar).",
-    });
   };
 
   return (
@@ -174,7 +173,6 @@ const Login = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={handleForgotPassword}
                   className="text-sm text-emerald-600 hover:text-emerald-700 hover:underline"
                 >
                   Lupa password?
@@ -183,9 +181,10 @@ const Login = () => {
 
               <Button 
                 type="submit" 
+                disabled={loading}
                 className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white py-2.5"
               >
-                Masuk
+                {loading ? "Masuk..." : "Masuk"}
               </Button>
             </form>
 
