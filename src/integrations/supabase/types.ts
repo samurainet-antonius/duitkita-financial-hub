@@ -71,6 +71,41 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_wallets: {
+        Row: {
+          created_at: string
+          id: string
+          role: string
+          shared_at: string
+          user_id: string
+          wallet_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: string
+          shared_at?: string
+          user_id: string
+          wallet_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: string
+          shared_at?: string
+          user_id?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_wallets_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
@@ -188,7 +223,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      user_has_wallet_access: {
+        Args: { wallet_uuid: string; user_uuid: string }
+        Returns: boolean
+      }
+      user_is_wallet_owner: {
+        Args: { wallet_uuid: string; user_uuid: string }
+        Returns: boolean
+      }
     }
     Enums: {
       wallet_type: "bank" | "cash" | "e_wallet" | "investment"
