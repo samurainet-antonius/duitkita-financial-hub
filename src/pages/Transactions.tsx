@@ -23,16 +23,34 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import BottomNavigation from "@/components/BottomNavigation";
 
+interface Transaction {
+  id: number;
+  type: 'income' | 'expense' | 'transfer';
+  category: string;
+  amount: number;
+  wallet: string;
+  walletTo?: string;
+  date: string;
+  time: string;
+  description: string;
+  status: 'completed' | 'pending' | 'failed';
+}
+
+interface DateRange {
+  from: Date | null;
+  to: Date | null;
+}
+
 const Transactions = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedWallet, setSelectedWallet] = useState("all");
-  const [dateRange, setDateRange] = useState({ from: null, to: null });
+  const [dateRange, setDateRange] = useState<DateRange>({ from: null, to: null });
   const [showFilters, setShowFilters] = useState(false);
 
-  const transactions = [
+  const transactions: Transaction[] = [
     {
       id: 1,
       type: 'income',
@@ -131,7 +149,7 @@ const Transactions = () => {
 
   const wallets = ['BCA', 'Mandiri', 'DANA', 'GoPay', 'Cash'];
 
-  const getTransactionIcon = (type) => {
+  const getTransactionIcon = (type: string) => {
     switch (type) {
       case 'income':
         return <ArrowUpRight className="h-4 w-4 text-green-600" />;
@@ -144,7 +162,7 @@ const Transactions = () => {
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
         return 'bg-green-100 text-green-800';
@@ -157,7 +175,7 @@ const Transactions = () => {
     }
   };
 
-  const formatCurrency = (amount) => {
+  const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
@@ -175,7 +193,7 @@ const Transactions = () => {
     return matchesSearch && matchesType && matchesCategory && matchesWallet;
   });
 
-  const groupedTransactions = filteredTransactions.reduce((groups, transaction) => {
+  const groupedTransactions = filteredTransactions.reduce((groups: Record<string, Transaction[]>, transaction) => {
     const date = transaction.date;
     if (!groups[date]) {
       groups[date] = [];
@@ -359,9 +377,9 @@ const Transactions = () => {
                       <Calendar
                         initialFocus
                         mode="range"
-                        defaultMonth={dateRange.from}
-                        selected={dateRange}
-                        onSelect={setDateRange}
+                        defaultMonth={dateRange.from || undefined}
+                        selected={dateRange.from && dateRange.to ? { from: dateRange.from, to: dateRange.to } : undefined}
+                        onSelect={(range) => setDateRange({ from: range?.from || null, to: range?.to || null })}
                         numberOfMonths={1}
                         className="pointer-events-auto"
                       />

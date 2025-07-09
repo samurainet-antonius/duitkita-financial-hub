@@ -18,10 +18,10 @@ const Login = () => {
     email: "",
     password: ""
   });
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validateForm = () => {
-    const newErrors = {};
+    const newErrors: Record<string, string> = {};
     
     if (!formData.email.trim()) {
       newErrors.email = "Email wajib diisi";
@@ -37,7 +37,7 @@ const Login = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (validateForm()) {
@@ -57,7 +57,7 @@ const Login = () => {
     }
   };
 
-  const handleInputChange = (field, value) => {
+  const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -162,7 +162,7 @@ const Login = () => {
                   <Checkbox 
                     id="remember" 
                     checked={rememberMe}
-                    onCheckedChange={setRememberMe}
+                    onCheckedChange={(checked) => setRememberMe(checked === true)}
                     className="border-gray-300"
                   />
                   <Label 
