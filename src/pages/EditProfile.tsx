@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,35 +8,40 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Camera, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
 
 const EditProfile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { data: profile, isLoading } = useProfile();
+  const updateProfileMutation = useUpdateProfile();
   
   const [formData, setFormData] = useState({
-    name: "John Doe",
-    email: "john.doe@email.com",
-    phone: "08123456789"
+    full_name: "",
+    phone: ""
   });
   
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        full_name: profile.full_name || "",
+        phone: profile.phone || ""
+      });
+    }
+  }, [profile]);
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
-    if (!formData.name.trim()) {
-      newErrors.name = "Nama wajib diisi";
+    if (!formData.full_name.trim()) {
+      newErrors.full_name = "Nama wajib diisi";
     }
     
-    if (!formData.email.trim()) {
-      newErrors.email = "Email wajib diisi";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Format email tidak valid";
-    }
-    
-    if (!formData.phone.trim()) {
-      newErrors.phone = "Nomor WhatsApp wajib diisi";
-    } else if (!/^[0-9]{10,15}$/.test(formData.phone.replace(/[^0-9]/g, ''))) {
+    if (formData.phone && !/^[0-9]{10,15}$/.test(formData.phone.replace(/[^0-9]/g, ''))) {
       newErrors.phone = "Nomor WhatsApp tidak valid";
     }
     
@@ -44,15 +49,19 @@ const EditProfile = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (validateForm()) {
-      toast({
-        title: "Profil Berhasil Diperbarui!",
-        description: "Informasi profil Anda telah disimpan.",
-      });
-      navigate('/profile');
+      try {
+        await updateProfileMutation.mutateAsync({
+          full_name: formData.full_name,
+          phone: formData.phone || null
+        });
+        navigate('/profile');
+      } catch (error) {
+        console.error('Error updating profile:', error);
+      }
     }
   };
 
@@ -69,6 +78,16 @@ const EditProfile = () => {
       }));
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+      </div>
+    );
+  }
+
+  const displayName = formData.full_name || user?.email || 'User';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -95,14 +114,15 @@ const EditProfile = () => {
             <div className="flex flex-col items-center space-y-4">
               <div className="relative">
                 <Avatar className="w-24 h-24">
-                  <AvatarImage src="" />
+                  <AvatarImage src={profile?.avatar_url || ''} />
                   <AvatarFallback className="text-2xl bg-emerald-100 text-emerald-600">
-                    {formData.name.split(' ').map(n => n[0]).join('')}
+                    {displayName.split(' ').map(n => n[0]).join('').toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <Button 
                   size="sm" 
                   className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0"
+                  onClick={() => toast({ title: "Coming Soon", description: "Fitur upload foto akan segera hadir!" })}
                 >
                   <Camera className="h-4 w-4" />
                 </Button>
@@ -120,38 +140,37 @@ const EditProfile = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="full_name" className="text-sm font-medium text-gray-700">
                   Nama Lengkap <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="name"
+                  id="full_name"
                   type="text"
                   placeholder="Masukkan nama lengkap"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  className={`${errors.name ? 'border-red-500' : 'border-gray-300'} focus:border-emerald-500`}
+                  value={formData.full_name}
+                  onChange={(e) => handleInputChange('full_name', e.target.value)}
+                  className={`${errors.full_name ? 'border-red-500' : 'border-gray-300'} focus:border-emerald-500`}
                 />
-                {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+                {errors.full_name && <p className="text-sm text-red-500">{errors.full_name}</p>}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                  Email <span className="text-red-500">*</span>
+                  Email
                 </Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="nama@email.com"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  className={`${errors.email ? 'border-red-500' : 'border-gray-300'} focus:border-emerald-500`}
+                  value={user?.email || ''}
+                  disabled
+                  className="bg-gray-100 cursor-not-allowed"
                 />
-                {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
+                <p className="text-xs text-gray-500">Email tidak dapat diubah</p>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
-                  Nomor WhatsApp <span className="text-red-500">*</span>
+                  Nomor WhatsApp
                 </Label>
                 <Input
                   id="phone"
@@ -167,9 +186,10 @@ const EditProfile = () => {
               <Button 
                 type="submit" 
                 className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white py-2.5 mt-6"
+                disabled={updateProfileMutation.isPending}
               >
                 <Save className="h-4 w-4 mr-2" />
-                Simpan Perubahan
+                {updateProfileMutation.isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
               </Button>
             </form>
           </CardContent>

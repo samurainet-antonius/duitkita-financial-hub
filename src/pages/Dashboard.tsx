@@ -21,9 +21,11 @@ import BottomNavigation from "@/components/BottomNavigation";
 import { useWallets } from "@/hooks/useWallets";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
+import { useAuth } from "@/hooks/useAuth";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState("today");
   const [selectedType, setSelectedType] = useState("all");
   const [selectedWallet, setSelectedWallet] = useState("all");
@@ -53,18 +55,34 @@ const Dashboard = () => {
   const today = new Date().toISOString().split('T')[0];
   const todayTransactions = transactions.filter(t => t.date === today);
 
-  // Sample chart data (you can enhance this with real data processing)
-  const chartData = [
-    { name: 'Sen', income: 2400, expense: 2400 },
-    { name: 'Sel', income: 1398, expense: 2210 },
-    { name: 'Rab', income: 9800, expense: 2290 },
-    { name: 'Kam', income: 3908, expense: 2000 },
-    { name: 'Jum', income: 4800, expense: 2181 },
-    { name: 'Sab', income: 3800, expense: 2500 },
-    { name: 'Min', income: 4300, expense: 2100 },
-  ];
+  // Generate chart data from real transactions
+  const generateChartData = () => {
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      const dayTransactions = transactions.filter(t => t.date === dateStr);
+      const income = dayTransactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+      const expense = dayTransactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      last7Days.push({
+        name: date.toLocaleDateString('id-ID', { weekday: 'short' }),
+        income,
+        expense
+      });
+    }
+    return last7Days;
+  };
 
-  // Calculate expense categories
+  const chartData = generateChartData();
+
+  // Calculate expense categories from real data
   const expenseCategories = categories
     .filter(cat => cat.type === 'expense')
     .map(cat => {
@@ -93,13 +111,15 @@ const Dashboard = () => {
     }
   };
 
-  // Check if user is logged in
-  useEffect(() => {
-    const isLoggedIn = localStorage.getItem('duitkita_logged_in');
-    if (!isLoggedIn) {
-      navigate('/login');
-    }
-  }, [navigate]);
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(cat => cat.id === categoryId);
+    return category?.name || 'Kategori';
+  };
+
+  const getWalletName = (walletId: string) => {
+    const wallet = wallets.find(w => w.id === walletId);
+    return wallet?.name || 'Wallet';
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -197,7 +217,7 @@ const Dashboard = () => {
         {/* Analytics Charts */}
         <Card>
           <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Analytics Keuangan</CardTitle>
+            <CardTitle className="text-lg">Analytics Keuangan (7 Hari Terakhir)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-64 mb-4">
@@ -284,14 +304,14 @@ const Dashboard = () => {
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">
-                          {transaction.categories?.name || 'Kategori'}
+                          {getCategoryName(transaction.category_id || '')}
                         </p>
                         <div className="flex items-center space-x-2">
                           <p className="text-sm text-gray-500">{transaction.time}</p>
                           <Badge variant="outline" className="text-xs">
                             {transaction.type === 'transfer' 
-                              ? `${transaction.wallets?.name} → ${transaction.to_wallets?.name}`
-                              : transaction.wallets?.name || 'Wallet'
+                              ? `${getWalletName(transaction.wallet_id || '')} → ${getWalletName(transaction.to_wallet_id || '')}`
+                              : getWalletName(transaction.wallet_id || '')
                             }
                           </Badge>
                         </div>

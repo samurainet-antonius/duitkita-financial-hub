@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -23,10 +22,12 @@ import { useToast } from "@/hooks/use-toast";
 import BottomNavigation from "@/components/BottomNavigation";
 import PrivacyPolicyModal from "@/components/PrivacyPolicyModal";
 import TermsModal from "@/components/TermsModal";
+import { useAuth } from "@/hooks/useAuth";
 
 const Settings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signOut } = useAuth();
   const [notifications, setNotifications] = useState({
     push: true,
     email: false,
@@ -36,17 +37,21 @@ const Settings = () => {
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
 
-  const handleLogout = () => {
-    localStorage.removeItem('duitkita_logged_in');
-    localStorage.removeItem('duitkita_remember');
-    localStorage.removeItem('duitkita_user');
-    
-    toast({
-      title: "Logout Berhasil",
-      description: "Anda telah keluar dari DuitKita.",
-    });
-    
-    navigate('/');
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logout Berhasil",
+        description: "Anda telah keluar dari DuitKita.",
+      });
+      navigate('/');
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Terjadi kesalahan saat logout",
+        variant: "destructive",
+      });
+    }
   };
 
   const menuItems = [

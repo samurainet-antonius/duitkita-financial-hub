@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Eye, EyeOff, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const ChangePassword = () => {
   const navigate = useNavigate();
@@ -25,13 +26,10 @@ const ChangePassword = () => {
   });
   
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    
-    if (!formData.currentPassword) {
-      newErrors.currentPassword = "Password saat ini wajib diisi";
-    }
     
     if (!formData.newPassword) {
       newErrors.newPassword = "Password baru wajib diisi";
@@ -49,15 +47,39 @@ const ChangePassword = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (validateForm()) {
-      toast({
-        title: "Password Berhasil Diubah!",
-        description: "Password Anda telah diperbarui.",
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: formData.newPassword
       });
-      navigate('/profile');
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Password Berhasil Diubah!",
+          description: "Password Anda telah diperbarui.",
+        });
+        navigate('/profile');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Terjadi kesalahan saat mengubah password",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -107,36 +129,6 @@ const ChangePassword = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="currentPassword" className="text-sm font-medium text-gray-700">
-                  Password Saat Ini <span className="text-red-500">*</span>
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="currentPassword"
-                    type={showPasswords.current ? "text" : "password"}
-                    placeholder="Masukkan password saat ini"
-                    value={formData.currentPassword}
-                    onChange={(e) => handleInputChange('currentPassword', e.target.value)}
-                    className={`${errors.currentPassword ? 'border-red-500' : 'border-gray-300'} focus:border-emerald-500 pr-10`}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                    onClick={() => togglePasswordVisibility('current')}
-                  >
-                    {showPasswords.current ? (
-                      <EyeOff className="h-4 w-4 text-gray-400" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-400" />
-                    )}
-                  </Button>
-                </div>
-                {errors.currentPassword && <p className="text-sm text-red-500">{errors.currentPassword}</p>}
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="newPassword" className="text-sm font-medium text-gray-700">
                   Password Baru <span className="text-red-500">*</span>
@@ -200,9 +192,10 @@ const ChangePassword = () => {
               <Button 
                 type="submit" 
                 className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white py-2.5 mt-6"
+                disabled={isLoading}
               >
                 <Save className="h-4 w-4 mr-2" />
-                Ubah Password
+                {isLoading ? 'Mengubah Password...' : 'Ubah Password'}
               </Button>
             </form>
           </CardContent>
