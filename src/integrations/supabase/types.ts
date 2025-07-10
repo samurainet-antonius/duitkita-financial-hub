@@ -115,6 +115,7 @@ export type Database = {
           description: string
           id: string
           notes: string | null
+          receipt_url: string | null
           time: string
           to_wallet_id: string | null
           type: string
@@ -130,6 +131,7 @@ export type Database = {
           description: string
           id?: string
           notes?: string | null
+          receipt_url?: string | null
           time?: string
           to_wallet_id?: string | null
           type: string
@@ -145,6 +147,7 @@ export type Database = {
           description?: string
           id?: string
           notes?: string | null
+          receipt_url?: string | null
           time?: string
           to_wallet_id?: string | null
           type?: string

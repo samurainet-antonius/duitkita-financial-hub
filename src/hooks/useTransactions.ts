@@ -49,15 +49,32 @@ export const useCreateTransaction = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (transaction: TransactionInsert) => {
+    mutationFn: async (transaction: TransactionInsert & { receiptFile?: File }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
+
+      let receiptUrl = null;
+
+      // Upload receipt if provided
+      if (transaction.receiptFile) {
+        const fileName = `${user.id}/${Date.now()}-${transaction.receiptFile.name}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('transaction-receipts')
+          .upload(fileName, transaction.receiptFile);
+
+        if (uploadError) throw uploadError;
+        receiptUrl = uploadData.path;
+      }
+
+      // Remove receiptFile from transaction data before inserting
+      const { receiptFile, ...transactionData } = transaction;
 
       const { data, error } = await supabase
         .from('transactions')
         .insert({
-          ...transaction,
+          ...transactionData,
           user_id: user.id,
+          receipt_url: receiptUrl,
         })
         .select()
         .single();

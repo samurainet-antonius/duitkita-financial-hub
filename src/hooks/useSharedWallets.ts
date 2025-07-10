@@ -22,10 +22,6 @@ export const useSharedWallets = (walletId?: string) => {
             balance,
             color,
             icon
-          ),
-          profiles!shared_wallets_user_id_fkey (
-            id,
-            full_name
           )
         `);
       
@@ -33,10 +29,27 @@ export const useSharedWallets = (walletId?: string) => {
         query = query.eq('wallet_id', walletId);
       }
       
-      const { data, error } = await query.order('created_at', { ascending: false });
+      const { data: sharedWallets, error } = await query.order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data;
+
+      // Fetch profile data separately for each shared wallet
+      const walletsWithProfiles = await Promise.all(
+        (sharedWallets || []).map(async (wallet) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .eq('id', wallet.user_id)
+            .single();
+          
+          return {
+            ...wallet,
+            profiles: profile
+          };
+        })
+      );
+      
+      return walletsWithProfiles;
     },
     enabled: !!walletId || walletId === undefined,
   });

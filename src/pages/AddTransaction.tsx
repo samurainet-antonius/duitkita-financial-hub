@@ -120,7 +120,7 @@ const AddTransaction = () => {
     if (!validateForm()) return;
 
     try {
-      await createTransaction.mutateAsync({
+      const transactionData: any = {
         type: formData.type,
         amount: parseFloat(formData.amount),
         description: formData.description,
@@ -130,8 +130,14 @@ const AddTransaction = () => {
         date: formData.date,
         time: formData.time,
         notes: formData.notes || null
-      });
+      };
 
+      // Add receipt file only for expense transactions
+      if (formData.type === 'expense' && receiptFile) {
+        transactionData.receiptFile = receiptFile;
+      }
+
+      await createTransaction.mutateAsync(transactionData);
       navigate('/transactions');
     } catch (error) {
       console.error('Error creating transaction:', error);
@@ -332,52 +338,54 @@ const AddTransaction = () => {
                 </div>
               </div>
 
-              {/* Receipt Upload */}
-              <div className="space-y-2">
-                <Label>Bukti Transaksi (Opsional)</Label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-                  {receiptPreview ? (
-                    <div className="relative">
-                      <img 
-                        src={receiptPreview} 
-                        alt="Receipt preview" 
-                        className="w-full max-h-48 object-contain rounded"
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="destructive"
-                        className="absolute top-2 right-2"
-                        onClick={removeReceipt}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="text-center">
-                      <Camera className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                      <p className="text-sm text-gray-600 mb-2">Upload foto bukti transaksi</p>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleReceiptUpload}
-                        className="hidden"
-                        id="receipt-upload"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => document.getElementById('receipt-upload')?.click()}
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        Pilih File
-                      </Button>
-                    </div>
-                  )}
+              {/* Receipt Upload - Only for expense transactions */}
+              {formData.type === 'expense' && (
+                <div className="space-y-2">
+                  <Label>Bukti Transaksi (Opsional)</Label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                    {receiptPreview ? (
+                      <div className="relative">
+                        <img 
+                          src={receiptPreview} 
+                          alt="Receipt preview" 
+                          className="w-full max-h-48 object-contain rounded"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          className="absolute top-2 right-2"
+                          onClick={removeReceipt}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <Camera className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-600 mb-2">Upload foto bukti transaksi</p>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleReceiptUpload}
+                          className="hidden"
+                          id="receipt-upload"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => document.getElementById('receipt-upload')?.click()}
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Pilih File
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  {errors.receipt && <p className="text-sm text-red-500">{errors.receipt}</p>}
                 </div>
-                {errors.receipt && <p className="text-sm text-red-500">{errors.receipt}</p>}
-              </div>
+              )}
 
               {/* Notes */}
               <div className="space-y-2">
