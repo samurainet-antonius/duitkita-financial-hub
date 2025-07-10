@@ -22,6 +22,10 @@ export const useSharedWallets = (walletId?: string) => {
             balance,
             color,
             icon
+          ),
+          profiles!shared_wallets_user_id_fkey (
+            id,
+            full_name
           )
         `);
       
@@ -44,30 +48,57 @@ export const useShareWallet = () => {
 
   return useMutation({
     mutationFn: async ({ walletId, userEmail }: { walletId: string; userEmail: string }) => {
-      // First, find the user by email
+      // First, find the user by email using auth.users search
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) throw new Error('Anda harus login');
+
+      // Search for user in profiles table by full_name or check in auth.users
+      // Since we can't directly query auth.users, we'll search profiles first
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
-        .select('id')
-        .ilike('full_name', `%${userEmail}%`)
-        .limit(1);
+        .select('id, full_name')
+        .or(`full_name.ilike.%${userEmail}%`)
+        .limit(5);
       
       if (profileError) throw profileError;
-      if (!profiles || profiles.length === 0) {
-        throw new Error('User tidak ditemukan');
+
+      let targetUserId = null;
+
+      // Check if we found a profile that matches
+      if (profiles && profiles.length > 0) {
+        // For exact email match or similar name match
+        const exactMatch = profiles.find(p => 
+          p.full_name?.toLowerCase() === userEmail.toLowerCase()
+        );
+        
+        if (exactMatch) {
+          targetUserId = exactMatch.id;
+        } else if (profiles.length === 1) {
+          targetUserId = profiles[0].id;
+        } else {
+          throw new Error('Ditemukan beberapa pengguna dengan nama serupa. Gunakan nama lengkap yang tepat.');
+        }
       }
 
-      const userId = profiles[0].id;
+      if (!targetUserId) {
+        throw new Error('Pengguna tidak ditemukan. Pastikan nama atau email sudah terdaftar.');
+      }
+
+      // Check if user is trying to share with themselves
+      if (targetUserId === currentUser.id) {
+        throw new Error('Anda tidak dapat membagikan dompet ke diri sendiri');
+      }
 
       // Check if already shared
       const { data: existing } = await supabase
         .from('shared_wallets')
         .select('id')
         .eq('wallet_id', walletId)
-        .eq('user_id', userId)
+        .eq('user_id', targetUserId)
         .single();
 
       if (existing) {
-        throw new Error('Dompet sudah dibagikan ke user ini');
+        throw new Error('Dompet sudah dibagikan ke pengguna ini');
       }
 
       // Share the wallet
@@ -75,7 +106,7 @@ export const useShareWallet = () => {
         .from('shared_wallets')
         .insert({
           wallet_id: walletId,
-          user_id: userId,
+          user_id: targetUserId,
           role: 'user',
         })
         .select()
@@ -86,6 +117,7 @@ export const useShareWallet = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['shared-wallets', variables.walletId] });
+      queryClient.invalidateQueries({ queryKey: ['wallets'] });
       toast({
         title: 'Berhasil!',
         description: 'Dompet berhasil dibagikan.',
@@ -93,7 +125,7 @@ export const useShareWallet = () => {
     },
     onError: (error) => {
       toast({
-        title: 'Error',
+        title: 'Gagal membagikan dompet',
         description: error.message,
         variant: 'destructive',
       });
@@ -116,6 +148,7 @@ export const useRemoveSharedAccess = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shared-wallets'] });
+      queryClient.invalidateQueries({ queryKey: ['wallets'] });
       toast({
         title: 'Berhasil!',
         description: 'Akses dompet berhasil dihapus.',

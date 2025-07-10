@@ -1,28 +1,40 @@
 
-import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Edit, Trash2, ArrowUpRight, ArrowDownRight, ArrowRight } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, ArrowUpRight, ArrowDownRight, ArrowRight, FileText } from "lucide-react";
+import { useTransactions, useDeleteTransaction } from "@/hooks/useTransactions";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const TransactionDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  const { data: transactions = [] } = useTransactions();
+  const deleteTransaction = useDeleteTransaction();
 
-  // Mock data - in real app this would come from API/database
-  const transaction = {
-    id: Number(id),
-    type: 'expense',
-    category: 'Makanan',
-    amount: 45000,
-    wallet: 'DANA',
-    date: '2024-01-09',
-    time: '12:30',
-    description: 'Lunch di kantor',
-    status: 'completed',
-    note: 'Makan siang di warung dekat kantor'
-  };
+  const transaction = transactions.find(t => t.id === id);
+
+  if (!transaction) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p className="text-gray-500">Transaksi tidak ditemukan</p>
+            <Button 
+              className="mt-4"
+              onClick={() => navigate('/transactions')}
+            >
+              Kembali ke Transaksi
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
@@ -37,25 +49,30 @@ const TransactionDetail = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'failed':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
       minimumFractionDigits: 0
     }).format(amount);
+  };
+
+  const handleDeleteTransaction = async () => {
+    if (confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
+      try {
+        await deleteTransaction.mutateAsync(transaction.id);
+        navigate('/transactions');
+      } catch (error) {
+        console.error('Error deleting transaction:', error);
+      }
+    }
+  };
+
+  const getReceiptUrl = (receiptPath: string) => {
+    const { data } = supabase.storage
+      .from('transaction-receipts')
+      .getPublicUrl(receiptPath);
+    return data.publicUrl;
   };
 
   return (
@@ -73,10 +90,21 @@ const TransactionDetail = () => {
             Kembali
           </Button>
           <div className="flex space-x-2">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-white hover:bg-white/20"
+              onClick={() => navigate(`/edit-transaction/${transaction.id}`)}
+            >
               <Edit className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-white hover:bg-white/20"
+              onClick={handleDeleteTransaction}
+              disabled={deleteTransaction.isPending}
+            >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
@@ -94,13 +122,15 @@ const TransactionDetail = () => {
                   {getTransactionIcon(transaction.type)}
                 </div>
                 <div>
-                  <CardTitle className="text-lg">{transaction.category}</CardTitle>
+                  <CardTitle className="text-lg">
+                    {transaction.categories?.name || 'Kategori'}
+                  </CardTitle>
                   <div className="flex items-center space-x-2 mt-1">
-                    <Badge className={getStatusColor(transaction.status)}>
-                      {transaction.status}
-                    </Badge>
                     <Badge variant="outline">
-                      {transaction.wallet}
+                      {transaction.type === 'transfer' 
+                        ? `${transaction.wallets?.name} → ${transaction.to_wallets?.name}`
+                        : transaction.wallets?.name || 'Wallet'
+                      }
                     </Badge>
                   </div>
                 </div>
@@ -135,21 +165,64 @@ const TransactionDetail = () => {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">Kategori</label>
-                <p className="text-gray-900">{transaction.category}</p>
+                <p className="text-gray-900">{transaction.categories?.name || 'Kategori'}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Dompet</label>
-                <p className="text-gray-900">{transaction.wallet}</p>
+                <label className="text-sm font-medium text-gray-500">Tipe</label>
+                <p className="text-gray-900 capitalize">{transaction.type}</p>
               </div>
             </div>
+            
+            {transaction.type === 'transfer' ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Dari Dompet</label>
+                  <p className="text-gray-900">{transaction.wallets?.name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Ke Dompet</label>
+                  <p className="text-gray-900">{transaction.to_wallets?.name}</p>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className="text-sm font-medium text-gray-500">Dompet</label>
+                <p className="text-gray-900">{transaction.wallets?.name}</p>
+              </div>
+            )}
+            
             <div>
               <label className="text-sm font-medium text-gray-500">Deskripsi</label>
               <p className="text-gray-900">{transaction.description}</p>
             </div>
-            {transaction.note && (
+            
+            {transaction.notes && (
               <div>
                 <label className="text-sm font-medium text-gray-500">Catatan</label>
-                <p className="text-gray-900">{transaction.note}</p>
+                <p className="text-gray-900">{transaction.notes}</p>
+              </div>
+            )}
+
+            {/* Receipt for expense transactions */}
+            {transaction.type === 'expense' && transaction.receipt_url && (
+              <div>
+                <label className="text-sm font-medium text-gray-500">Bukti Pembayaran</label>
+                <div className="mt-2">
+                  <img 
+                    src={getReceiptUrl(transaction.receipt_url)} 
+                    alt="Bukti pembayaran"
+                    className="max-w-full h-64 object-cover rounded-lg border"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => window.open(getReceiptUrl(transaction.receipt_url), '_blank')}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Lihat Full
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
@@ -157,11 +230,20 @@ const TransactionDetail = () => {
 
         {/* Actions */}
         <div className="grid grid-cols-2 gap-3">
-          <Button variant="outline" className="w-full">
+          <Button 
+            variant="outline" 
+            className="w-full"
+            onClick={() => navigate(`/edit-transaction/${transaction.id}`)}
+          >
             <Edit className="h-4 w-4 mr-2" />
             Edit Transaksi
           </Button>
-          <Button variant="destructive" className="w-full">
+          <Button 
+            variant="destructive" 
+            className="w-full"
+            onClick={handleDeleteTransaction}
+            disabled={deleteTransaction.isPending}
+          >
             <Trash2 className="h-4 w-4 mr-2" />
             Hapus Transaksi
           </Button>

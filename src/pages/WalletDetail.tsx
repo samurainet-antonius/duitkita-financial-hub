@@ -1,46 +1,48 @@
 
-import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Edit, Trash2, Plus, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { useWallets, useDeleteWallet } from "@/hooks/useWallets";
+import { useTransactions } from "@/hooks/useTransactions";
+import { useSharedWallets } from "@/hooks/useSharedWallets";
+import { getWalletIcon } from "@/utils/walletIcons";
+import { useAuth } from "@/hooks/useAuth";
 
 const WalletDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  const { data: wallets = [] } = useWallets();
+  const { data: transactions = [] } = useTransactions(id);
+  const { data: sharedAccess = [] } = useSharedWallets(id);
+  const deleteWallet = useDeleteWallet();
 
-  // Mock data - in real app this would come from API/database
-  const wallet = {
-    id: Number(id),
-    name: 'BCA',
-    type: 'Bank',
-    balance: 15750000,
-    currency: 'IDR',
-    color: 'blue',
-    accountNumber: '****1234'
-  };
+  const wallet = wallets.find(w => w.id === id);
+  const recentTransactions = transactions.slice(0, 5);
 
-  const recentTransactions = [
-    {
-      id: 1,
-      type: 'income',
-      category: 'Gaji',
-      amount: 8500000,
-      date: '2024-01-09',
-      time: '09:00',
-      description: 'Gaji bulan Januari'
-    },
-    {
-      id: 2,
-      type: 'expense',
-      category: 'Transfer',
-      amount: 500000,
-      date: '2024-01-08',
-      time: '20:00',
-      description: 'Transfer ke Mandiri'
-    }
-  ];
+  // Check if current user is the owner
+  const isOwner = wallet?.user_id === user?.id;
+
+  if (!wallet) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p className="text-gray-500">Dompet tidak ditemukan</p>
+            <Button 
+              className="mt-4"
+              onClick={() => navigate('/wallets')}
+            >
+              Kembali ke Dompet
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -61,6 +63,39 @@ const WalletDetail = () => {
     }
   };
 
+  const getWalletTypeLabel = (type: string) => {
+    switch (type) {
+      case 'bank':
+        return 'Bank';
+      case 'e_wallet':
+        return 'E-Wallet';
+      case 'cash':
+        return 'Tunai';
+      case 'investment':
+        return 'Investasi';
+      default:
+        return 'Lainnya';
+    }
+  };
+
+  const handleDeleteWallet = async () => {
+    if (!isOwner) {
+      alert('Anda tidak memiliki izin untuk menghapus dompet ini');
+      return;
+    }
+
+    if (confirm('Apakah Anda yakin ingin menghapus dompet ini?')) {
+      try {
+        await deleteWallet.mutateAsync(wallet.id);
+        navigate('/wallets');
+      } catch (error) {
+        console.error('Error deleting wallet:', error);
+      }
+    }
+  };
+
+  const Icon = getWalletIcon(wallet.type);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -75,35 +110,56 @@ const WalletDetail = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Kembali
           </Button>
-          <div className="flex space-x-2">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-              <Edit className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
+          {isOwner && (
+            <div className="flex space-x-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-white hover:bg-white/20"
+                onClick={() => navigate(`/edit-wallet/${wallet.id}`)}
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-white hover:bg-white/20"
+                onClick={handleDeleteWallet}
+                disabled={deleteWallet.isPending}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
         <h1 className="text-xl font-bold">Detail Dompet</h1>
       </div>
 
       <div className="p-4 space-y-4">
         {/* Wallet Info */}
-        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+        <Card className="bg-gradient-to-r text-white"
+              style={{ background: `linear-gradient(to right, ${wallet.color}, ${wallet.color}dd)` }}>
           <CardContent className="p-6">
             <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="text-lg font-semibold">{wallet.name}</h3>
-                <p className="text-blue-100">{wallet.type}</p>
-                <p className="text-blue-100 text-sm">{wallet.accountNumber}</p>
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Icon className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">{wallet.name}</h3>
+                  <p className="text-white/80">{getWalletTypeLabel(wallet.type)}</p>
+                  {wallet.account_number && (
+                    <p className="text-white/80 text-sm">{wallet.account_number}</p>
+                  )}
+                </div>
               </div>
               <Badge variant="secondary" className="bg-white/20 text-white">
-                {wallet.currency}
+                IDR
               </Badge>
             </div>
             <div>
-              <p className="text-blue-100 text-sm">Saldo Tersedia</p>
-              <p className="text-2xl font-bold">{formatCurrency(wallet.balance)}</p>
+              <p className="text-white/80 text-sm">Saldo Tersedia</p>
+              <p className="text-2xl font-bold">{formatCurrency(wallet.balance || 0)}</p>
             </div>
           </CardContent>
         </Card>
@@ -112,16 +168,35 @@ const WalletDetail = () => {
         <div className="grid grid-cols-2 gap-3">
           <Button 
             className="bg-emerald-600 hover:bg-emerald-700"
-            onClick={() => navigate('/add-transaction')}
+            onClick={() => navigate(`/add-transaction?wallet=${wallet.id}`)}
           >
             <Plus className="h-4 w-4 mr-2" />
             Tambah Transaksi
           </Button>
-          <Button variant="outline">
-            <Edit className="h-4 w-4 mr-2" />
-            Edit Dompet
-          </Button>
+          {isOwner && (
+            <Button 
+              variant="outline"
+              onClick={() => navigate(`/edit-wallet/${wallet.id}`)}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Dompet
+            </Button>
+          )}
         </div>
+
+        {/* Shared Access Info */}
+        {sharedAccess.length > 0 && (
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="p-4">
+              <h3 className="font-semibold text-blue-800 mb-2">
+                Dompet Dibagikan ({sharedAccess.filter(a => a.role === 'user').length} pengguna)
+              </h3>
+              <p className="text-blue-600 text-sm">
+                Dompet ini dapat diakses oleh pengguna lain
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Recent Transactions */}
         <Card>
@@ -131,39 +206,47 @@ const WalletDetail = () => {
               <Button 
                 variant="ghost" 
                 size="sm"
-                onClick={() => navigate('/transactions')}
+                onClick={() => navigate(`/transactions?wallet=${wallet.id}`)}
               >
                 Lihat Semua
               </Button>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {recentTransactions.map((transaction) => (
-                <div 
-                  key={transaction.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
-                  onClick={() => navigate(`/transaction-detail/${transaction.id}`)}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                      {getTransactionIcon(transaction.type)}
+            {recentTransactions.length > 0 ? (
+              <div className="space-y-3">
+                {recentTransactions.map((transaction) => (
+                  <div 
+                    key={transaction.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
+                    onClick={() => navigate(`/transaction-detail/${transaction.id}`)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                        {getTransactionIcon(transaction.type)}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {transaction.categories?.name || 'Kategori'}
+                        </p>
+                        <p className="text-sm text-gray-500">{transaction.description}</p>
+                        <p className="text-xs text-gray-400">{transaction.date} • {transaction.time}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{transaction.category}</p>
-                      <p className="text-sm text-gray-500">{transaction.description}</p>
-                      <p className="text-xs text-gray-400">{transaction.date} • {transaction.time}</p>
-                    </div>
+                    <p className={`font-semibold ${
+                      transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {transaction.type === 'expense' ? '-' : '+'}
+                      {formatCurrency(transaction.amount)}
+                    </p>
                   </div>
-                  <p className={`font-semibold ${
-                    transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {transaction.type === 'expense' ? '-' : '+'}
-                    {formatCurrency(transaction.amount)}
-                  </p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-500">Belum ada transaksi</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
