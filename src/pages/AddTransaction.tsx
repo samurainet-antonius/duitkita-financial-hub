@@ -13,11 +13,16 @@ import { ArrowLeft, CalendarIcon, Upload, ArrowUpRight, ArrowDownRight, ArrowRig
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { useToast } from "@/hooks/use-toast";
+import { useWallets } from "@/hooks/useWallets";
+import { useCategories } from "@/hooks/useCategories";
+import { useCreateTransaction } from "@/hooks/useTransactions";
 
 const AddTransaction = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { data: wallets = [] } = useWallets();
+  const { data: categories = [] } = useCategories();
+  const createTransaction = useCreateTransaction();
+  
   const [activeTab, setActiveTab] = useState("income");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [formData, setFormData] = useState({
@@ -29,24 +34,10 @@ const AddTransaction = () => {
     receipt: null
   });
 
-  const incomeCategories = [
-    "Gaji", "Freelance", "Investasi", "Bonus", "Hadiah", "Penjualan", "Lainnya"
-  ];
+  const incomeCategories = categories.filter(cat => cat.type === 'income');
+  const expenseCategories = categories.filter(cat => cat.type === 'expense');
 
-  const expenseCategories = [
-    "Makanan", "Transport", "Belanja", "Hiburan", "Kesehatan", "Pendidikan", 
-    "Tagihan", "Investasi", "Donasi", "Lainnya"
-  ];
-
-  const wallets = [
-    { id: "bca", name: "BCA", balance: 12500000 },
-    { id: "dana", name: "DANA", balance: 850000 },
-    { id: "gopay", name: "GoPay", balance: 320000 },
-    { id: "mandiri", name: "Mandiri", balance: 2100000 },
-    { id: "cash", name: "Cash", balance: 500000 }
-  ];
-
-  const formatCurrency = (amount) => {
+  const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
@@ -54,15 +45,14 @@ const AddTransaction = () => {
     }).format(amount);
   };
 
-  const handleInputChange = (field, value) => {
+  const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
-  const handleAmountChange = (value) => {
-    // Remove non-numeric characters except comma and dot
+  const handleAmountChange = (value: string) => {
     const numericValue = value.replace(/[^0-9]/g, '');
     setFormData(prev => ({
       ...prev,
@@ -70,37 +60,39 @@ const AddTransaction = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.amount || !formData.category || !formData.wallet) {
-      toast({
-        title: "Error",
-        description: "Mohon lengkapi semua field yang wajib diisi.",
-        variant: "destructive"
-      });
       return;
     }
 
     if (activeTab === "transfer" && !formData.walletTo) {
-      toast({
-        title: "Error",
-        description: "Pilih dompet tujuan untuk transfer.",
-        variant: "destructive"
-      });
       return;
     }
 
-    // Simulate saving transaction
-    toast({
-      title: "Transaksi Berhasil!",
-      description: `${activeTab === 'income' ? 'Pemasukan' : activeTab === 'expense' ? 'Pengeluaran' : 'Transfer'} sebesar ${formatCurrency(parseInt(formData.amount))} telah ditambahkan.`,
-    });
+    try {
+      const selectedCategory = categories.find(cat => cat.id === formData.category);
+      
+      await createTransaction.mutateAsync({
+        type: activeTab,
+        amount: parseFloat(formData.amount),
+        description: formData.description || `${selectedCategory?.name || 'Transaksi'} - ${format(selectedDate, "dd MMM yyyy", { locale: id })}`,
+        category_id: formData.category,
+        wallet_id: formData.wallet,
+        to_wallet_id: activeTab === 'transfer' ? formData.walletTo : null,
+        date: format(selectedDate, 'yyyy-MM-dd'),
+        time: format(new Date(), 'HH:mm:ss'),
+        notes: formData.description
+      });
 
-    navigate('/transactions');
+      navigate('/transactions');
+    } catch (error) {
+      console.error('Error creating transaction:', error);
+    }
   };
 
-  const getTabIcon = (tab) => {
+  const getTabIcon = (tab: string) => {
     switch (tab) {
       case 'income':
         return <ArrowUpRight className="h-4 w-4 mr-1" />;
@@ -119,6 +111,10 @@ const AddTransaction = () => {
 
   const getSelectedWalletTo = () => {
     return wallets.find(w => w.id === formData.walletTo);
+  };
+
+  const getSelectedCategory = () => {
+    return categories.find(c => c.id === formData.category);
   };
 
   return (
@@ -166,7 +162,6 @@ const AddTransaction = () => {
                 </TabsList>
 
                 <TabsContent value="income" className="space-y-4 mt-6">
-                  {/* Amount */}
                   <div className="text-center space-y-2">
                     <Label className="text-lg font-medium">Jumlah Pemasukan</Label>
                     <div className="relative">
@@ -183,7 +178,6 @@ const AddTransaction = () => {
                     </div>
                   </div>
 
-                  {/* Category */}
                   <div className="space-y-2">
                     <Label>Kategori <span className="text-red-500">*</span></Label>
                     <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
@@ -192,15 +186,14 @@ const AddTransaction = () => {
                       </SelectTrigger>
                       <SelectContent>
                         {incomeCategories.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* Wallet */}
                   <div className="space-y-2">
                     <Label>Dompet <span className="text-red-500">*</span></Label>
                     <Select value={formData.wallet} onValueChange={(value) => handleInputChange('wallet', value)}>
@@ -210,7 +203,7 @@ const AddTransaction = () => {
                       <SelectContent>
                         {wallets.map((wallet) => (
                           <SelectItem key={wallet.id} value={wallet.id}>
-                            {wallet.name} - {formatCurrency(wallet.balance)}
+                            {wallet.name} - {formatCurrency(wallet.balance || 0)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -219,7 +212,6 @@ const AddTransaction = () => {
                 </TabsContent>
 
                 <TabsContent value="expense" className="space-y-4 mt-6">
-                  {/* Amount */}
                   <div className="text-center space-y-2">
                     <Label className="text-lg font-medium">Jumlah Pengeluaran</Label>
                     <div className="relative">
@@ -236,7 +228,6 @@ const AddTransaction = () => {
                     </div>
                   </div>
 
-                  {/* Category */}
                   <div className="space-y-2">
                     <Label>Kategori <span className="text-red-500">*</span></Label>
                     <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
@@ -245,15 +236,14 @@ const AddTransaction = () => {
                       </SelectTrigger>
                       <SelectContent>
                         {expenseCategories.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* Wallet */}
                   <div className="space-y-2">
                     <Label>Dompet <span className="text-red-500">*</span></Label>
                     <Select value={formData.wallet} onValueChange={(value) => handleInputChange('wallet', value)}>
@@ -263,7 +253,7 @@ const AddTransaction = () => {
                       <SelectContent>
                         {wallets.map((wallet) => (
                           <SelectItem key={wallet.id} value={wallet.id}>
-                            {wallet.name} - {formatCurrency(wallet.balance)}
+                            {wallet.name} - {formatCurrency(wallet.balance || 0)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -272,7 +262,6 @@ const AddTransaction = () => {
                 </TabsContent>
 
                 <TabsContent value="transfer" className="space-y-4 mt-6">
-                  {/* Amount */}
                   <div className="text-center space-y-2">
                     <Label className="text-lg font-medium">Jumlah Transfer</Label>
                     <div className="relative">
@@ -289,7 +278,6 @@ const AddTransaction = () => {
                     </div>
                   </div>
 
-                  {/* From Wallet */}
                   <div className="space-y-2">
                     <Label>Dari Dompet <span className="text-red-500">*</span></Label>
                     <Select value={formData.wallet} onValueChange={(value) => handleInputChange('wallet', value)}>
@@ -299,14 +287,13 @@ const AddTransaction = () => {
                       <SelectContent>
                         {wallets.map((wallet) => (
                           <SelectItem key={wallet.id} value={wallet.id}>
-                            {wallet.name} - {formatCurrency(wallet.balance)}
+                            {wallet.name} - {formatCurrency(wallet.balance || 0)}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* To Wallet */}
                   <div className="space-y-2">
                     <Label>Ke Dompet <span className="text-red-500">*</span></Label>
                     <Select value={formData.walletTo} onValueChange={(value) => handleInputChange('walletTo', value)}>
@@ -316,7 +303,7 @@ const AddTransaction = () => {
                       <SelectContent>
                         {wallets.filter(w => w.id !== formData.wallet).map((wallet) => (
                           <SelectItem key={wallet.id} value={wallet.id}>
-                            {wallet.name} - {formatCurrency(wallet.balance)}
+                            {wallet.name} - {formatCurrency(wallet.balance || 0)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -358,20 +345,6 @@ const AddTransaction = () => {
                 />
               </div>
 
-              {/* Receipt Upload */}
-              <div className="space-y-2">
-                <Label>Upload Struk/Bukti (Opsional)</Label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-emerald-400 transition-colors cursor-pointer">
-                  <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-500">
-                    Klik untuk upload atau drag & drop file
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    PNG, JPG, PDF (Max 5MB)
-                  </p>
-                </div>
-              </div>
-
               {/* Summary */}
               {formData.amount && formData.wallet && (
                 <Card className="bg-gray-50">
@@ -397,7 +370,7 @@ const AddTransaction = () => {
                       {formData.category && (
                         <div className="flex justify-between">
                           <span>Kategori:</span>
-                          <span className="font-medium">{formData.category}</span>
+                          <span className="font-medium">{getSelectedCategory()?.name}</span>
                         </div>
                       )}
                       <div className="flex justify-between">
@@ -428,6 +401,7 @@ const AddTransaction = () => {
                   variant="outline" 
                   className="flex-1"
                   onClick={() => navigate('/dashboard')}
+                  disabled={createTransaction.isPending}
                 >
                   Batal
                 </Button>
@@ -438,8 +412,9 @@ const AddTransaction = () => {
                     activeTab === 'expense' ? 'bg-red-600 hover:bg-red-700' :
                     'bg-blue-600 hover:bg-blue-700'
                   }`}
+                  disabled={createTransaction.isPending}
                 >
-                  Simpan Transaksi
+                  {createTransaction.isPending ? 'Menyimpan...' : 'Simpan Transaksi'}
                 </Button>
               </div>
             </form>

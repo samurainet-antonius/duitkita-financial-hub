@@ -18,6 +18,9 @@ import {
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import { useNavigate } from "react-router-dom";
 import BottomNavigation from "@/components/BottomNavigation";
+import { useWallets } from "@/hooks/useWallets";
+import { useTransactions } from "@/hooks/useTransactions";
+import { useCategories } from "@/hooks/useCategories";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -25,7 +28,32 @@ const Dashboard = () => {
   const [selectedType, setSelectedType] = useState("all");
   const [selectedWallet, setSelectedWallet] = useState("all");
 
-  // Sample data
+  const { data: wallets = [] } = useWallets();
+  const { data: transactions = [] } = useTransactions();
+  const { data: categories = [] } = useCategories();
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
+
+  // Calculate totals
+  const totalBalance = wallets.reduce((sum, wallet) => sum + (wallet.balance || 0), 0);
+  const totalIncome = transactions
+    .filter(t => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
+  const totalExpense = transactions
+    .filter(t => t.type === 'expense')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  // Today's transactions
+  const today = new Date().toISOString().split('T')[0];
+  const todayTransactions = transactions.filter(t => t.date === today);
+
+  // Sample chart data (you can enhance this with real data processing)
   const chartData = [
     { name: 'Sen', income: 2400, expense: 2400 },
     { name: 'Sel', income: 1398, expense: 2210 },
@@ -36,54 +64,23 @@ const Dashboard = () => {
     { name: 'Min', income: 4300, expense: 2100 },
   ];
 
-  const expenseCategories = [
-    { name: 'Makanan', value: 2400000, color: '#EF4444' },
-    { name: 'Transport', value: 800000, color: '#F97316' },
-    { name: 'Belanja', value: 1200000, color: '#EAB308' },
-    { name: 'Hiburan', value: 600000, color: '#10B981' },
-    { name: 'Lainnya', value: 400000, color: '#6366F1' },
-  ];
+  // Calculate expense categories
+  const expenseCategories = categories
+    .filter(cat => cat.type === 'expense')
+    .map(cat => {
+      const categoryTransactions = transactions.filter(t => 
+        t.type === 'expense' && t.category_id === cat.id
+      );
+      const total = categoryTransactions.reduce((sum, t) => sum + t.amount, 0);
+      return {
+        name: cat.name,
+        value: total,
+        color: cat.color || '#6366F1'
+      };
+    })
+    .filter(cat => cat.value > 0);
 
-  const todayTransactions = [
-    {
-      id: 1,
-      type: 'income',
-      category: 'Gaji',
-      amount: 8500000,
-      wallet: 'BCA',
-      time: '09:00',
-      description: 'Gaji bulan ini'
-    },
-    {
-      id: 2,
-      type: 'expense',
-      category: 'Makanan',
-      amount: 45000,
-      wallet: 'DANA',
-      time: '12:30',
-      description: 'Lunch di kantor'
-    },
-    {
-      id: 3,
-      type: 'expense',
-      category: 'Transport',
-      amount: 25000,
-      wallet: 'GoPay',
-      time: '18:00',
-      description: 'Ojek online pulang'
-    },
-    {
-      id: 4,
-      type: 'transfer',
-      category: 'Transfer',
-      amount: 500000,
-      wallet: 'BCA → Mandiri',
-      time: '20:00',
-      description: 'Transfer ke tabungan'
-    }
-  ];
-
-  const getTransactionIcon = (type) => {
+  const getTransactionIcon = (type: string) => {
     switch (type) {
       case 'income':
         return <ArrowUpRight className="h-4 w-4 text-green-600" />;
@@ -94,14 +91,6 @@ const Dashboard = () => {
       default:
         return null;
     }
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
-    }).format(amount);
   };
 
   // Check if user is logged in
@@ -138,7 +127,7 @@ const Dashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-emerald-100 text-sm">Saldo Total</p>
-                  <p className="text-2xl font-bold">Rp 15.7M</p>
+                  <p className="text-2xl font-bold">{formatCurrency(totalBalance)}</p>
                 </div>
                 <Wallet className="h-8 w-8 text-emerald-200" />
               </div>
@@ -151,7 +140,7 @@ const Dashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-emerald-100 text-xs">Income</p>
-                    <p className="text-lg font-bold text-green-300">+8.5M</p>
+                    <p className="text-lg font-bold text-green-300">{formatCurrency(totalIncome)}</p>
                   </div>
                   <TrendingUp className="h-5 w-5 text-green-300" />
                 </div>
@@ -163,7 +152,7 @@ const Dashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-emerald-100 text-xs">Expense</p>
-                    <p className="text-lg font-bold text-red-300">-2.1M</p>
+                    <p className="text-lg font-bold text-red-300">{formatCurrency(totalExpense)}</p>
                   </div>
                   <TrendingDown className="h-5 w-5 text-red-300" />
                 </div>
@@ -217,7 +206,7 @@ const Dashboard = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis />
-                  <Tooltip formatter={(value) => formatCurrency(value)} />
+                  <Tooltip formatter={(value) => formatCurrency(value as number)} />
                   <Line type="monotone" dataKey="income" stroke="#10B981" strokeWidth={2} />
                   <Line type="monotone" dataKey="expense" stroke="#EF4444" strokeWidth={2} />
                 </LineChart>
@@ -227,47 +216,49 @@ const Dashboard = () => {
         </Card>
 
         {/* Expense Categories */}
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Kategori Pengeluaran</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-48 mb-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={expenseCategories}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={60}
-                    dataKey="value"
-                  >
-                    {expenseCategories.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(value)} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {expenseCategories.map((category, index) => (
-                <div key={index} className="flex items-center space-x-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
-                    style={{ backgroundColor: category.color }}
-                  ></div>
-                  <span className="text-sm text-gray-600">{category.name}</span>
-                  <span className="text-sm font-medium ml-auto">
-                    {formatCurrency(category.value)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {expenseCategories.length > 0 && (
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Kategori Pengeluaran</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-48 mb-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={expenseCategories}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={60}
+                      dataKey="value"
+                    >
+                      {expenseCategories.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {expenseCategories.map((category, index) => (
+                  <div key={index} className="flex items-center space-x-2">
+                    <div 
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: category.color }}
+                    ></div>
+                    <span className="text-sm text-gray-600">{category.name}</span>
+                    <span className="text-sm font-medium ml-auto">
+                      {formatCurrency(category.value)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Filters */}
+        {/* Today's Transactions */}
         <Card>
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
@@ -279,78 +270,56 @@ const Dashboard = () => {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              <Select value={selectedDate} onValueChange={setSelectedDate}>
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">Hari Ini</SelectItem>
-                  <SelectItem value="week">Minggu Ini</SelectItem>
-                  <SelectItem value="month">Bulan Ini</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedType} onValueChange={setSelectedType}>
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Tipe</SelectItem>
-                  <SelectItem value="income">Income</SelectItem>
-                  <SelectItem value="expense">Expense</SelectItem>
-                  <SelectItem value="transfer">Transfer</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedWallet} onValueChange={setSelectedWallet}>
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Wallet</SelectItem>
-                  <SelectItem value="bca">BCA</SelectItem>
-                  <SelectItem value="dana">DANA</SelectItem>
-                  <SelectItem value="gopay">GoPay</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Transaction List */}
             <div className="space-y-3">
-              {todayTransactions.map((transaction) => (
-                <div 
-                  key={transaction.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                  onClick={() => navigate(`/transaction-detail/${transaction.id}`)}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-                      {getTransactionIcon(transaction.type)}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{transaction.category}</p>
-                      <div className="flex items-center space-x-2">
-                        <p className="text-sm text-gray-500">{transaction.time}</p>
-                        <Badge variant="outline" className="text-xs">
-                          {transaction.wallet}
-                        </Badge>
+              {todayTransactions.length > 0 ? (
+                todayTransactions.map((transaction) => (
+                  <div 
+                    key={transaction.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/transaction-detail/${transaction.id}`)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
+                        {getTransactionIcon(transaction.type)}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {transaction.categories?.name || 'Kategori'}
+                        </p>
+                        <div className="flex items-center space-x-2">
+                          <p className="text-sm text-gray-500">{transaction.time}</p>
+                          <Badge variant="outline" className="text-xs">
+                            {transaction.type === 'transfer' 
+                              ? `${transaction.wallets?.name} → ${transaction.to_wallets?.name}`
+                              : transaction.wallets?.name || 'Wallet'
+                            }
+                          </Badge>
+                        </div>
                       </div>
                     </div>
+                    <div className="text-right">
+                      <p className={`font-semibold ${
+                        transaction.type === 'income' ? 'text-green-600' : 
+                        transaction.type === 'expense' ? 'text-red-600' : 'text-blue-600'
+                      }`}>
+                        {transaction.type === 'expense' ? '-' : '+'}
+                        {formatCurrency(transaction.amount)}
+                      </p>
+                      <p className="text-xs text-gray-500">{transaction.description}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className={`font-semibold ${
-                      transaction.type === 'income' ? 'text-green-600' : 
-                      transaction.type === 'expense' ? 'text-red-600' : 'text-blue-600'
-                    }`}>
-                      {transaction.type === 'expense' ? '-' : '+'}
-                      {formatCurrency(transaction.amount)}
-                    </p>
-                    <p className="text-xs text-gray-500">{transaction.description}</p>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">Belum ada transaksi hari ini</p>
+                  <Button 
+                    className="mt-2 bg-emerald-600 hover:bg-emerald-700"
+                    onClick={() => navigate('/add-transaction')}
+                  >
+                    Tambah Transaksi
+                  </Button>
                 </div>
-              ))}
+              )}
             </div>
 
             <Button 

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,11 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Building, Smartphone, Wallet, CreditCard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useCreateWallet } from "@/hooks/useWallets";
 import { useToast } from "@/hooks/use-toast";
 
 const AddWallet = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const createWallet = useCreateWallet();
   const [formData, setFormData] = useState({
     name: "",
     type: "",
@@ -22,9 +22,9 @@ const AddWallet = () => {
 
   const walletTypes = [
     { value: "bank", label: "Bank", icon: Building, color: "bg-blue-600" },
-    { value: "ewallet", label: "E-Wallet", icon: Smartphone, color: "bg-green-600" },
+    { value: "e_wallet", label: "E-Wallet", icon: Smartphone, color: "bg-green-600" },
     { value: "cash", label: "Tunai", icon: Wallet, color: "bg-gray-600" },
-    { value: "credit", label: "Kartu Kredit", icon: CreditCard, color: "bg-red-600" }
+    { value: "investment", label: "Investasi", icon: CreditCard, color: "bg-purple-600" }
   ];
 
   const bankOptions = [
@@ -35,14 +35,14 @@ const AddWallet = () => {
     "DANA", "GoPay", "OVO", "LinkAja", "ShopeePay", "Sakuku", "DOKU"
   ];
 
-  const handleInputChange = (field, value) => {
+  const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
-  const handleBalanceChange = (value) => {
+  const handleBalanceChange = (value: string) => {
     const numericValue = value.replace(/[^0-9]/g, '');
     setFormData(prev => ({
       ...prev,
@@ -50,27 +50,30 @@ const AddWallet = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name || !formData.type) {
-      toast({
-        title: "Error",
-        description: "Mohon lengkapi nama dan tipe dompet.",
-        variant: "destructive"
-      });
       return;
     }
 
-    toast({
-      title: "Dompet Berhasil Ditambahkan!",
-      description: `${formData.name} telah ditambahkan ke daftar dompet Anda.`,
-    });
+    try {
+      await createWallet.mutateAsync({
+        name: formData.name,
+        type: formData.type as "bank" | "cash" | "e_wallet" | "investment",
+        balance: formData.balance ? parseFloat(formData.balance) : 0,
+        account_number: formData.accountNumber || null,
+        color: walletTypes.find(w => w.value === formData.type)?.color || '#3B82F6',
+        icon: walletTypes.find(w => w.value === formData.type)?.icon.name || 'Wallet'
+      });
 
-    navigate('/wallets');
+      navigate('/wallets');
+    } catch (error) {
+      console.error('Error creating wallet:', error);
+    }
   };
 
-  const formatCurrency = (amount) => {
+  const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
@@ -82,7 +85,7 @@ const AddWallet = () => {
     switch (formData.type) {
       case 'bank':
         return bankOptions;
-      case 'ewallet':
+      case 'e_wallet':
         return ewalletOptions;
       default:
         return [];
@@ -145,11 +148,10 @@ const AddWallet = () => {
                 </div>
               </div>
 
-              {/* Wallet Name */}
               {formData.type && (
                 <div className="space-y-2">
                   <Label>Nama Dompet <span className="text-red-500">*</span></Label>
-                  {(formData.type === 'bank' || formData.type === 'ewallet') ? (
+                  {(formData.type === 'bank' || formData.type === 'e_wallet') ? (
                     <Select value={formData.name} onValueChange={(value) => handleInputChange('name', value)}>
                       <SelectTrigger>
                         <SelectValue placeholder={`Pilih ${formData.type === 'bank' ? 'bank' : 'e-wallet'}`} />
@@ -172,17 +174,16 @@ const AddWallet = () => {
                 </div>
               )}
 
-              {/* Account Number */}
               {formData.type && formData.type !== 'cash' && (
                 <div className="space-y-2">
                   <Label>
                     {formData.type === 'bank' ? 'Nomor Rekening' : 
-                     formData.type === 'ewallet' ? 'Nomor HP/ID' : 'Nomor Kartu'}
+                     formData.type === 'e_wallet' ? 'Nomor HP/ID' : 'Nomor Kartu'}
                   </Label>
                   <Input
                     placeholder={
                       formData.type === 'bank' ? 'Contoh: 1234567890' :
-                      formData.type === 'ewallet' ? 'Contoh: 081234567890' : 
+                      formData.type === 'e_wallet' ? 'Contoh: 081234567890' : 
                       'Contoh: 1234 **** **** 5678'
                     }
                     value={formData.accountNumber}
@@ -191,7 +192,6 @@ const AddWallet = () => {
                 </div>
               )}
 
-              {/* Initial Balance */}
               <div className="space-y-2">
                 <Label>Saldo Awal</Label>
                 <div className="relative">
@@ -211,7 +211,6 @@ const AddWallet = () => {
                 </p>
               </div>
 
-              {/* Description */}
               <div className="space-y-2">
                 <Label>Keterangan (Opsional)</Label>
                 <Input
@@ -221,7 +220,6 @@ const AddWallet = () => {
                 />
               </div>
 
-              {/* Preview */}
               {formData.name && formData.type && (
                 <Card className="bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200">
                   <CardContent className="p-4">
@@ -251,28 +249,28 @@ const AddWallet = () => {
                 </Card>
               )}
 
-              {/* Submit Buttons */}
               <div className="flex space-x-3">
                 <Button 
                   type="button" 
                   variant="outline" 
                   className="flex-1"
                   onClick={() => navigate('/wallets')}
+                  disabled={createWallet.isPending}
                 >
                   Batal
                 </Button>
                 <Button 
                   type="submit" 
                   className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700"
+                  disabled={createWallet.isPending}
                 >
-                  Simpan Dompet
+                  {createWallet.isPending ? 'Menyimpan...' : 'Simpan Dompet'}
                 </Button>
               </div>
             </form>
           </CardContent>
         </Card>
 
-        {/* Tips */}
         <Card className="mt-4 border-blue-200 bg-blue-50">
           <CardContent className="p-4">
             <h3 className="font-semibold text-blue-800 mb-2">💡 Tips</h3>
