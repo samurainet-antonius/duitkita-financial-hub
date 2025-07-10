@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 
 type Wallet = Tables<'wallets'>;
-type WalletInsert = TablesInsert<'wallets'>;
+type WalletInsert = Omit<TablesInsert<'wallets'>, 'user_id'>;
 type WalletUpdate = TablesUpdate<'wallets'>;
 
 export const useWallets = () => {
