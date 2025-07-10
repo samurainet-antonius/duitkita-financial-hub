@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { validateEmail, validatePassword, validateRequired, validatePhone } from "@/utils/validation";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -23,27 +25,22 @@ const Register = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
-    if (!formData.name.trim()) {
-      newErrors.name = "Nama wajib diisi";
+    const nameError = validateRequired(formData.name, "Nama");
+    if (nameError) newErrors.name = nameError;
+    
+    const whatsappError = validateRequired(formData.whatsapp, "Nomor WhatsApp");
+    if (whatsappError) {
+      newErrors.whatsapp = whatsappError;
+    } else {
+      const phoneError = validatePhone(formData.whatsapp);
+      if (phoneError) newErrors.whatsapp = phoneError;
     }
     
-    if (!formData.whatsapp.trim()) {
-      newErrors.whatsapp = "Nomor WhatsApp wajib diisi";
-    } else if (!/^[0-9]{10,15}$/.test(formData.whatsapp.replace(/[^0-9]/g, ''))) {
-      newErrors.whatsapp = "Nomor WhatsApp tidak valid";
-    }
+    const emailError = validateEmail(formData.email);
+    if (emailError) newErrors.email = emailError;
     
-    if (!formData.email.trim()) {
-      newErrors.email = "Email wajib diisi";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Format email tidak valid";
-    }
-    
-    if (!formData.password) {
-      newErrors.password = "Password wajib diisi";
-    } else if (formData.password.length < 8) {
-      newErrors.password = "Password minimal 8 karakter";
-    }
+    const passwordError = validatePassword(formData.password);
+    if (passwordError) newErrors.password = passwordError;
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -74,7 +71,6 @@ const Register = () => {
       [field]: value
     }));
     
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({
         ...prev,
@@ -126,7 +122,7 @@ const Register = () => {
                   placeholder="Masukkan nama lengkap"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
-                  className={`${errors.name ? 'border-red-500' : 'border-gray-300'} focus:border-emerald-500`}
+                  className={`${errors.name ? 'border-red-500 focus:border-red-500' : 'border-gray-300'} focus:border-emerald-500`}
                 />
                 {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
               </div>
@@ -141,7 +137,7 @@ const Register = () => {
                   placeholder="08xxxxxxxxxx"
                   value={formData.whatsapp}
                   onChange={(e) => handleInputChange('whatsapp', e.target.value)}
-                  className={`${errors.whatsapp ? 'border-red-500' : 'border-gray-300'} focus:border-emerald-500`}
+                  className={`${errors.whatsapp ? 'border-red-500 focus:border-red-500' : 'border-gray-300'} focus:border-emerald-500`}
                 />
                 {errors.whatsapp && <p className="text-sm text-red-500">{errors.whatsapp}</p>}
               </div>
@@ -156,7 +152,7 @@ const Register = () => {
                   placeholder="nama@email.com"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className={`${errors.email ? 'border-red-500' : 'border-gray-300'} focus:border-emerald-500`}
+                  className={`${errors.email ? 'border-red-500 focus:border-red-500' : 'border-gray-300'} focus:border-emerald-500`}
                 />
                 {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
               </div>
@@ -172,7 +168,7 @@ const Register = () => {
                     placeholder="Minimal 8 karakter"
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
-                    className={`${errors.password ? 'border-red-500' : 'border-gray-300'} focus:border-emerald-500 pr-10`}
+                    className={`${errors.password ? 'border-red-500 focus:border-red-500' : 'border-gray-300'} focus:border-emerald-500 pr-10`}
                   />
                   <Button
                     type="button"

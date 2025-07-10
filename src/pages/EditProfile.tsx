@@ -7,13 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Camera, Save } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
+import { validateRequired, validatePhone } from "@/utils/validation";
 
 const EditProfile = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { user } = useAuth();
   const { data: profile, isLoading } = useProfile();
   const updateProfileMutation = useUpdateProfile();
@@ -37,12 +36,12 @@ const EditProfile = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
-    if (!formData.full_name.trim()) {
-      newErrors.full_name = "Nama wajib diisi";
-    }
+    const nameError = validateRequired(formData.full_name, "Nama lengkap");
+    if (nameError) newErrors.full_name = nameError;
     
-    if (formData.phone && !/^[0-9]{10,15}$/.test(formData.phone.replace(/[^0-9]/g, ''))) {
-      newErrors.phone = "Nomor WhatsApp tidak valid";
+    if (formData.phone) {
+      const phoneError = validatePhone(formData.phone);
+      if (phoneError) newErrors.phone = phoneError;
     }
     
     setErrors(newErrors);
@@ -52,16 +51,16 @@ const EditProfile = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (validateForm()) {
-      try {
-        await updateProfileMutation.mutateAsync({
-          full_name: formData.full_name,
-          phone: formData.phone || null
-        });
-        navigate('/profile');
-      } catch (error) {
-        console.error('Error updating profile:', error);
-      }
+    if (!validateForm()) return;
+    
+    try {
+      await updateProfileMutation.mutateAsync({
+        full_name: formData.full_name,
+        phone: formData.phone || null
+      });
+      navigate('/profile');
+    } catch (error) {
+      console.error('Error updating profile:', error);
     }
   };
 
@@ -122,7 +121,7 @@ const EditProfile = () => {
                 <Button 
                   size="sm" 
                   className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0"
-                  onClick={() => toast({ title: "Coming Soon", description: "Fitur upload foto akan segera hadir!" })}
+                  onClick={() => {/* TODO: Implement photo upload */}}
                 >
                   <Camera className="h-4 w-4" />
                 </Button>
@@ -149,7 +148,7 @@ const EditProfile = () => {
                   placeholder="Masukkan nama lengkap"
                   value={formData.full_name}
                   onChange={(e) => handleInputChange('full_name', e.target.value)}
-                  className={`${errors.full_name ? 'border-red-500' : 'border-gray-300'} focus:border-emerald-500`}
+                  className={`${errors.full_name ? 'border-red-500 focus:border-red-500' : 'border-gray-300'} focus:border-emerald-500`}
                 />
                 {errors.full_name && <p className="text-sm text-red-500">{errors.full_name}</p>}
               </div>
@@ -178,7 +177,7 @@ const EditProfile = () => {
                   placeholder="08xxxxxxxxxx"
                   value={formData.phone}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
-                  className={`${errors.phone ? 'border-red-500' : 'border-gray-300'} focus:border-emerald-500`}
+                  className={`${errors.phone ? 'border-red-500 focus:border-red-500' : 'border-gray-300'} focus:border-emerald-500`}
                 />
                 {errors.phone && <p className="text-sm text-red-500">{errors.phone}</p>}
               </div>

@@ -8,19 +8,18 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Eye, EyeOff, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { validatePassword } from "@/utils/validation";
 
 const ChangePassword = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
   const [showPasswords, setShowPasswords] = useState({
-    current: false,
     new: false,
     confirm: false
   });
   
   const [formData, setFormData] = useState({
-    currentPassword: "",
     newPassword: "",
     confirmPassword: ""
   });
@@ -31,11 +30,8 @@ const ChangePassword = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
-    if (!formData.newPassword) {
-      newErrors.newPassword = "Password baru wajib diisi";
-    } else if (formData.newPassword.length < 8) {
-      newErrors.newPassword = "Password baru minimal 8 karakter";
-    }
+    const passwordError = validatePassword(formData.newPassword);
+    if (passwordError) newErrors.newPassword = passwordError;
     
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = "Konfirmasi password wajib diisi";
@@ -97,7 +93,7 @@ const ChangePassword = () => {
     }
   };
 
-  const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
+  const togglePasswordVisibility = (field: 'new' | 'confirm') => {
     setShowPasswords(prev => ({
       ...prev,
       [field]: !prev[field]
@@ -140,7 +136,7 @@ const ChangePassword = () => {
                     placeholder="Minimal 8 karakter"
                     value={formData.newPassword}
                     onChange={(e) => handleInputChange('newPassword', e.target.value)}
-                    className={`${errors.newPassword ? 'border-red-500' : 'border-gray-300'} focus:border-emerald-500 pr-10`}
+                    className={`${errors.newPassword ? 'border-red-500 focus:border-red-500' : 'border-gray-300'} focus:border-emerald-500 pr-10`}
                   />
                   <Button
                     type="button"
@@ -170,7 +166,7 @@ const ChangePassword = () => {
                     placeholder="Ulangi password baru"
                     value={formData.confirmPassword}
                     onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                    className={`${errors.confirmPassword ? 'border-red-500' : 'border-gray-300'} focus:border-emerald-500 pr-10`}
+                    className={`${errors.confirmPassword ? 'border-red-500 focus:border-red-500' : 'border-gray-300'} focus:border-emerald-500 pr-10`}
                   />
                   <Button
                     type="button"

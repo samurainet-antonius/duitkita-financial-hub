@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Building, Smartphone, Wallet, CreditCard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCreateWallet } from "@/hooks/useWallets";
-import { useToast } from "@/hooks/use-toast";
+import { validateRequired, validateAmount } from "@/utils/validation";
 
 const AddWallet = () => {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ const AddWallet = () => {
     accountNumber: "",
     description: ""
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const walletTypes = [
     { value: "bank", label: "Bank", icon: Building, color: "bg-blue-600" },
@@ -35,27 +37,47 @@ const AddWallet = () => {
     "DANA", "GoPay", "OVO", "LinkAja", "ShopeePay", "Sakuku", "DOKU"
   ];
 
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    
+    const nameError = validateRequired(formData.name, "Nama dompet");
+    if (nameError) newErrors.name = nameError;
+    
+    const typeError = validateRequired(formData.type, "Tipe dompet");
+    if (typeError) newErrors.type = typeError;
+    
+    if (formData.balance) {
+      const amountError = validateAmount(formData.balance);
+      if (amountError) newErrors.balance = amountError;
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+    
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: ""
+      }));
+    }
   };
 
   const handleBalanceChange = (value: string) => {
     const numericValue = value.replace(/[^0-9]/g, '');
-    setFormData(prev => ({
-      ...prev,
-      balance: numericValue
-    }));
+    handleInputChange('balance', numericValue);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.type) {
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
       await createWallet.mutateAsync({
@@ -146,6 +168,7 @@ const AddWallet = () => {
                     );
                   })}
                 </div>
+                {errors.type && <p className="text-sm text-red-500">{errors.type}</p>}
               </div>
 
               {formData.type && (
@@ -153,7 +176,7 @@ const AddWallet = () => {
                   <Label>Nama Dompet <span className="text-red-500">*</span></Label>
                   {(formData.type === 'bank' || formData.type === 'e_wallet') ? (
                     <Select value={formData.name} onValueChange={(value) => handleInputChange('name', value)}>
-                      <SelectTrigger>
+                      <SelectTrigger className={errors.name ? 'border-red-500' : ''}>
                         <SelectValue placeholder={`Pilih ${formData.type === 'bank' ? 'bank' : 'e-wallet'}`} />
                       </SelectTrigger>
                       <SelectContent>
@@ -169,8 +192,10 @@ const AddWallet = () => {
                       placeholder="Contoh: Dompet Harian, Kas Kecil"
                       value={formData.name}
                       onChange={(e) => handleInputChange('name', e.target.value)}
+                      className={errors.name ? 'border-red-500' : ''}
                     />
                   )}
+                  {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
                 </div>
               )}
 
@@ -203,9 +228,10 @@ const AddWallet = () => {
                     placeholder="0"
                     value={formData.balance ? parseInt(formData.balance).toLocaleString('id-ID') : ''}
                     onChange={(e) => handleBalanceChange(e.target.value)}
-                    className="pl-10 text-lg"
+                    className={`pl-10 text-lg ${errors.balance ? 'border-red-500' : ''}`}
                   />
                 </div>
+                {errors.balance && <p className="text-sm text-red-500">{errors.balance}</p>}
                 <p className="text-sm text-gray-500">
                   Masukkan saldo saat ini di akun tersebut
                 </p>

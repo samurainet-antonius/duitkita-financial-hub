@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { validateEmail, validateRequired } from "@/utils/validation";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -20,7 +22,6 @@ const Login = () => {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user) {
       navigate('/dashboard');
@@ -30,15 +31,11 @@ const Login = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
-    if (!formData.email.trim()) {
-      newErrors.email = "Email wajib diisi";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Format email tidak valid";
-    }
+    const emailError = validateEmail(formData.email);
+    if (emailError) newErrors.email = emailError;
     
-    if (!formData.password) {
-      newErrors.password = "Password wajib diisi";
-    }
+    const passwordError = validateRequired(formData.password, "Password");
+    if (passwordError) newErrors.password = passwordError;
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -69,7 +66,6 @@ const Login = () => {
       [field]: value
     }));
     
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({
         ...prev,
@@ -121,7 +117,7 @@ const Login = () => {
                   placeholder="nama@email.com"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className={`${errors.email ? 'border-red-500' : 'border-gray-300'} focus:border-emerald-500`}
+                  className={`${errors.email ? 'border-red-500 focus:border-red-500' : 'border-gray-300'} focus:border-emerald-500`}
                 />
                 {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
               </div>
@@ -137,7 +133,7 @@ const Login = () => {
                     placeholder="Masukkan password"
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
-                    className={`${errors.password ? 'border-red-500' : 'border-gray-300'} focus:border-emerald-500 pr-10`}
+                    className={`${errors.password ? 'border-red-500 focus:border-red-500' : 'border-gray-300'} focus:border-emerald-500 pr-10`}
                   />
                   <Button
                     type="button"

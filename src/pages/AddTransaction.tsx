@@ -1,48 +1,67 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, CalendarIcon, Upload, ArrowUpRight, ArrowDownRight, ArrowRight } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Camera, Upload, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
-import { id } from "date-fns/locale";
+import { useCreateTransaction } from "@/hooks/useTransactions";
 import { useWallets } from "@/hooks/useWallets";
 import { useCategories } from "@/hooks/useCategories";
-import { useCreateTransaction } from "@/hooks/useTransactions";
+import { validateRequired, validateAmount } from "@/utils/validation";
+import { getWalletIcon } from "@/utils/walletIcons";
 
 const AddTransaction = () => {
   const navigate = useNavigate();
+  const createTransaction = useCreateTransaction();
   const { data: wallets = [] } = useWallets();
   const { data: categories = [] } = useCategories();
-  const createTransaction = useCreateTransaction();
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   
-  const [activeTab, setActiveTab] = useState("income");
-  const [selectedDate, setSelectedDate] = useState(new Date());
   const [formData, setFormData] = useState({
+    type: "expense",
     amount: "",
-    category: "",
-    wallet: "",
-    walletTo: "",
     description: "",
-    receipt: null
+    category_id: "",
+    wallet_id: "",
+    to_wallet_id: "",
+    date: new Date().toISOString().split('T')[0],
+    time: new Date().toTimeString().split(' ')[0].slice(0, 5),
+    notes: ""
   });
+  
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const incomeCategories = categories.filter(cat => cat.type === 'income');
-  const expenseCategories = categories.filter(cat => cat.type === 'expense');
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
-    }).format(amount);
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    
+    const amountError = validateAmount(formData.amount);
+    if (amountError) newErrors.amount = amountError;
+    
+    const descError = validateRequired(formData.description, "Deskripsi");
+    if (descError) newErrors.description = descError;
+    
+    const walletError = validateRequired(formData.wallet_id, "Dompet");
+    if (walletError) newErrors.wallet_id = walletError;
+    
+    if (formData.type === 'transfer') {
+      const toWalletError = validateRequired(formData.to_wallet_id, "Dompet tujuan");
+      if (toWalletError) newErrors.to_wallet_id = toWalletError;
+      
+      if (formData.wallet_id === formData.to_wallet_id) {
+        newErrors.to_wallet_id = "Dompet tujuan harus berbeda";
+      }
+    } else {
+      const categoryError = validateRequired(formData.category_id, "Kategori");
+      if (categoryError) newErrors.category_id = categoryError;
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -50,40 +69,67 @@ const AddTransaction = () => {
       ...prev,
       [field]: value
     }));
+    
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: ""
+      }));
+    }
   };
 
   const handleAmountChange = (value: string) => {
     const numericValue = value.replace(/[^0-9]/g, '');
-    setFormData(prev => ({
-      ...prev,
-      amount: numericValue
-    }));
+    handleInputChange('amount', numericValue);
+  };
+
+  const handleReceiptUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        setErrors(prev => ({ ...prev, receipt: "Ukuran file maksimal 5MB" }));
+        return;
+      }
+      
+      if (!file.type.startsWith('image/')) {
+        setErrors(prev => ({ ...prev, receipt: "File harus berupa gambar" }));
+        return;
+      }
+      
+      setReceiptFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setReceiptPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+      
+      if (errors.receipt) {
+        setErrors(prev => ({ ...prev, receipt: "" }));
+      }
+    }
+  };
+
+  const removeReceipt = () => {
+    setReceiptFile(null);
+    setReceiptPreview(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.amount || !formData.category || !formData.wallet) {
-      return;
-    }
-
-    if (activeTab === "transfer" && !formData.walletTo) {
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
-      const selectedCategory = categories.find(cat => cat.id === formData.category);
-      
       await createTransaction.mutateAsync({
-        type: activeTab,
+        type: formData.type,
         amount: parseFloat(formData.amount),
-        description: formData.description || `${selectedCategory?.name || 'Transaksi'} - ${format(selectedDate, "dd MMM yyyy", { locale: id })}`,
-        category_id: formData.category,
-        wallet_id: formData.wallet,
-        to_wallet_id: activeTab === 'transfer' ? formData.walletTo : null,
-        date: format(selectedDate, 'yyyy-MM-dd'),
-        time: format(new Date(), 'HH:mm:ss'),
-        notes: formData.description
+        description: formData.description,
+        category_id: formData.type === 'transfer' ? null : formData.category_id,
+        wallet_id: formData.wallet_id,
+        to_wallet_id: formData.type === 'transfer' ? formData.to_wallet_id : null,
+        date: formData.date,
+        time: formData.time,
+        notes: formData.notes || null
       });
 
       navigate('/transactions');
@@ -92,30 +138,17 @@ const AddTransaction = () => {
     }
   };
 
-  const getTabIcon = (tab: string) => {
-    switch (tab) {
-      case 'income':
-        return <ArrowUpRight className="h-4 w-4 mr-1" />;
-      case 'expense':
-        return <ArrowDownRight className="h-4 w-4 mr-1" />;
-      case 'transfer':
-        return <ArrowRight className="h-4 w-4 mr-1" />;
-      default:
-        return null;
-    }
-  };
+  const transactionTypes = [
+    { value: "income", label: "Pemasukan", color: "text-green-600" },
+    { value: "expense", label: "Pengeluaran", color: "text-red-600" },
+    { value: "transfer", label: "Transfer", color: "text-blue-600" }
+  ];
 
-  const getSelectedWallet = () => {
-    return wallets.find(w => w.id === formData.wallet);
-  };
+  const filteredCategories = categories.filter(cat => 
+    formData.type === 'income' ? cat.type === 'income' : cat.type === 'expense'
+  );
 
-  const getSelectedWalletTo = () => {
-    return wallets.find(w => w.id === formData.walletTo);
-  };
-
-  const getSelectedCategory = () => {
-    return categories.find(c => c.id === formData.category);
-  };
+  const availableToWallets = wallets.filter(wallet => wallet.id !== formData.wallet_id);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -125,293 +158,251 @@ const AddTransaction = () => {
           <Button 
             variant="ghost" 
             size="sm"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/transactions')}
             className="text-white hover:bg-white/20 p-2"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
             <h1 className="text-lg font-semibold">Tambah Transaksi</h1>
-            <p className="text-emerald-100 text-sm">Catat keuangan Anda</p>
+            <p className="text-emerald-100 text-sm">Catat transaksi keuangan Anda</p>
           </div>
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="p-4 space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle>Transaksi Baru</CardTitle>
+            <CardTitle>Detail Transaksi</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Transaction Type Tabs */}
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="income" className="text-green-600">
-                    {getTabIcon('income')}
-                    Income
-                  </TabsTrigger>
-                  <TabsTrigger value="expense" className="text-red-600">
-                    {getTabIcon('expense')}
-                    Expense
-                  </TabsTrigger>
-                  <TabsTrigger value="transfer" className="text-blue-600">
-                    {getTabIcon('transfer')}
-                    Transfer
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="income" className="space-y-4 mt-6">
-                  <div className="text-center space-y-2">
-                    <Label className="text-lg font-medium">Jumlah Pemasukan</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-green-600">
-                        Rp
-                      </span>
-                      <Input
-                        type="text"
-                        placeholder="0"
-                        value={formData.amount ? parseInt(formData.amount).toLocaleString('id-ID') : ''}
-                        onChange={(e) => handleAmountChange(e.target.value)}
-                        className="text-center text-2xl font-bold pl-12 h-16 border-green-200 focus:border-green-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Kategori <span className="text-red-500">*</span></Label>
-                    <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih kategori" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {incomeCategories.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Dompet <span className="text-red-500">*</span></Label>
-                    <Select value={formData.wallet} onValueChange={(value) => handleInputChange('wallet', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih dompet" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {wallets.map((wallet) => (
-                          <SelectItem key={wallet.id} value={wallet.id}>
-                            {wallet.name} - {formatCurrency(wallet.balance || 0)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="expense" className="space-y-4 mt-6">
-                  <div className="text-center space-y-2">
-                    <Label className="text-lg font-medium">Jumlah Pengeluaran</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-red-600">
-                        Rp
-                      </span>
-                      <Input
-                        type="text"
-                        placeholder="0"
-                        value={formData.amount ? parseInt(formData.amount).toLocaleString('id-ID') : ''}
-                        onChange={(e) => handleAmountChange(e.target.value)}
-                        className="text-center text-2xl font-bold pl-12 h-16 border-red-200 focus:border-red-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Kategori <span className="text-red-500">*</span></Label>
-                    <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih kategori" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {expenseCategories.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Dompet <span className="text-red-500">*</span></Label>
-                    <Select value={formData.wallet} onValueChange={(value) => handleInputChange('wallet', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih dompet" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {wallets.map((wallet) => (
-                          <SelectItem key={wallet.id} value={wallet.id}>
-                            {wallet.name} - {formatCurrency(wallet.balance || 0)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="transfer" className="space-y-4 mt-6">
-                  <div className="text-center space-y-2">
-                    <Label className="text-lg font-medium">Jumlah Transfer</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-blue-600">
-                        Rp
-                      </span>
-                      <Input
-                        type="text"
-                        placeholder="0"
-                        value={formData.amount ? parseInt(formData.amount).toLocaleString('id-ID') : ''}
-                        onChange={(e) => handleAmountChange(e.target.value)}
-                        className="text-center text-2xl font-bold pl-12 h-16 border-blue-200 focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Dari Dompet <span className="text-red-500">*</span></Label>
-                    <Select value={formData.wallet} onValueChange={(value) => handleInputChange('wallet', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih dompet asal" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {wallets.map((wallet) => (
-                          <SelectItem key={wallet.id} value={wallet.id}>
-                            {wallet.name} - {formatCurrency(wallet.balance || 0)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Ke Dompet <span className="text-red-500">*</span></Label>
-                    <Select value={formData.walletTo} onValueChange={(value) => handleInputChange('walletTo', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih dompet tujuan" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {wallets.filter(w => w.id !== formData.wallet).map((wallet) => (
-                          <SelectItem key={wallet.id} value={wallet.id}>
-                            {wallet.name} - {formatCurrency(wallet.balance || 0)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </TabsContent>
-              </Tabs>
-
-              {/* Date */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Transaction Type */}
               <div className="space-y-2">
-                <Label>Tanggal</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-left font-normal">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {selectedDate ? format(selectedDate, "dd MMMM yyyy", { locale: id }) : "Pilih tanggal"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={setSelectedDate}
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
+                <Label>Jenis Transaksi</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {transactionTypes.map((type) => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => handleInputChange('type', type.value)}
+                      className={`p-3 rounded-lg border text-sm font-medium transition-all ${
+                        formData.type === type.value
+                          ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <span className={type.color}>{type.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Amount */}
+              <div className="space-y-2">
+                <Label>Jumlah <span className="text-red-500">*</span></Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-lg font-medium text-gray-600">
+                    Rp
+                  </span>
+                  <Input
+                    type="text"
+                    placeholder="0"
+                    value={formData.amount ? parseInt(formData.amount).toLocaleString('id-ID') : ''}
+                    onChange={(e) => handleAmountChange(e.target.value)}
+                    className={`pl-10 text-lg ${errors.amount ? 'border-red-500' : ''}`}
+                  />
+                </div>
+                {errors.amount && <p className="text-sm text-red-500">{errors.amount}</p>}
               </div>
 
               {/* Description */}
               <div className="space-y-2">
-                <Label>Keterangan</Label>
-                <Textarea
-                  placeholder="Tambahkan keterangan (opsional)"
+                <Label>Deskripsi <span className="text-red-500">*</span></Label>
+                <Input
+                  placeholder="Contoh: Makan siang, Gaji, Transfer ke..."
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
+                  className={errors.description ? 'border-red-500' : ''}
+                />
+                {errors.description && <p className="text-sm text-red-500">{errors.description}</p>}
+              </div>
+
+              {/* Wallet */}
+              <div className="space-y-2">
+                <Label>
+                  {formData.type === 'transfer' ? 'Dari Dompet' : 'Dompet'} <span className="text-red-500">*</span>
+                </Label>
+                <Select value={formData.wallet_id} onValueChange={(value) => handleInputChange('wallet_id', value)}>
+                  <SelectTrigger className={errors.wallet_id ? 'border-red-500' : ''}>
+                    <SelectValue placeholder="Pilih dompet" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {wallets.map((wallet) => {
+                      const WalletIcon = getWalletIcon(wallet.type, wallet.name);
+                      return (
+                        <SelectItem key={wallet.id} value={wallet.id}>
+                          <div className="flex items-center space-x-2">
+                            <WalletIcon className="h-4 w-4" />
+                            <span>{wallet.name}</span>
+                            <span className="text-sm text-gray-500">
+                              Rp {wallet.balance?.toLocaleString('id-ID') || '0'}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                {errors.wallet_id && <p className="text-sm text-red-500">{errors.wallet_id}</p>}
+              </div>
+
+              {/* To Wallet (for transfer) */}
+              {formData.type === 'transfer' && (
+                <div className="space-y-2">
+                  <Label>Ke Dompet <span className="text-red-500">*</span></Label>
+                  <Select value={formData.to_wallet_id} onValueChange={(value) => handleInputChange('to_wallet_id', value)}>
+                    <SelectTrigger className={errors.to_wallet_id ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Pilih dompet tujuan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableToWallets.map((wallet) => {
+                        const WalletIcon = getWalletIcon(wallet.type, wallet.name);
+                        return (
+                          <SelectItem key={wallet.id} value={wallet.id}>
+                            <div className="flex items-center space-x-2">
+                              <WalletIcon className="h-4 w-4" />
+                              <span>{wallet.name}</span>
+                              <span className="text-sm text-gray-500">
+                                Rp {wallet.balance?.toLocaleString('id-ID') || '0'}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {errors.to_wallet_id && <p className="text-sm text-red-500">{errors.to_wallet_id}</p>}
+                </div>
+              )}
+
+              {/* Category (not for transfer) */}
+              {formData.type !== 'transfer' && (
+                <div className="space-y-2">
+                  <Label>Kategori <span className="text-red-500">*</span></Label>
+                  <Select value={formData.category_id} onValueChange={(value) => handleInputChange('category_id', value)}>
+                    <SelectTrigger className={errors.category_id ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Pilih kategori" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredCategories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          <div className="flex items-center space-x-2">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: category.color || '#6B7280' }}
+                            />
+                            <span>{category.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.category_id && <p className="text-sm text-red-500">{errors.category_id}</p>}
+                </div>
+              )}
+
+              {/* Date and Time */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Tanggal</Label>
+                  <Input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => handleInputChange('date', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Waktu</Label>
+                  <Input
+                    type="time"
+                    value={formData.time}
+                    onChange={(e) => handleInputChange('time', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Receipt Upload */}
+              <div className="space-y-2">
+                <Label>Bukti Transaksi (Opsional)</Label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                  {receiptPreview ? (
+                    <div className="relative">
+                      <img 
+                        src={receiptPreview} 
+                        alt="Receipt preview" 
+                        className="w-full max-h-48 object-contain rounded"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        className="absolute top-2 right-2"
+                        onClick={removeReceipt}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <Camera className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-600 mb-2">Upload foto bukti transaksi</p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleReceiptUpload}
+                        className="hidden"
+                        id="receipt-upload"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => document.getElementById('receipt-upload')?.click()}
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Pilih File
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                {errors.receipt && <p className="text-sm text-red-500">{errors.receipt}</p>}
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-2">
+                <Label>Catatan (Opsional)</Label>
+                <Textarea
+                  placeholder="Tambahkan catatan atau keterangan tambahan..."
+                  value={formData.notes}
+                  onChange={(e) => handleInputChange('notes', e.target.value)}
                   rows={3}
                 />
               </div>
 
-              {/* Summary */}
-              {formData.amount && formData.wallet && (
-                <Card className="bg-gray-50">
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold mb-3">Ringkasan Transaksi</h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span>Tipe:</span>
-                        <span className="font-medium">
-                          {activeTab === 'income' ? 'Pemasukan' : 
-                           activeTab === 'expense' ? 'Pengeluaran' : 'Transfer'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Jumlah:</span>
-                        <span className={`font-bold ${
-                          activeTab === 'income' ? 'text-green-600' : 
-                          activeTab === 'expense' ? 'text-red-600' : 'text-blue-600'
-                        }`}>
-                          {formatCurrency(parseInt(formData.amount) || 0)}
-                        </span>
-                      </div>
-                      {formData.category && (
-                        <div className="flex justify-between">
-                          <span>Kategori:</span>
-                          <span className="font-medium">{getSelectedCategory()?.name}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span>{activeTab === 'transfer' ? 'Dari:' : 'Dompet:'}</span>
-                        <span className="font-medium">{getSelectedWallet()?.name}</span>
-                      </div>
-                      {activeTab === 'transfer' && formData.walletTo && (
-                        <div className="flex justify-between">
-                          <span>Ke:</span>
-                          <span className="font-medium">{getSelectedWalletTo()?.name}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span>Tanggal:</span>
-                        <span className="font-medium">
-                          {format(selectedDate, "dd MMMM yyyy", { locale: id })}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Submit Button */}
-              <div className="flex space-x-3">
+              <div className="flex space-x-3 pt-4">
                 <Button 
                   type="button" 
                   variant="outline" 
                   className="flex-1"
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate('/transactions')}
                   disabled={createTransaction.isPending}
                 >
                   Batal
                 </Button>
                 <Button 
                   type="submit" 
-                  className={`flex-1 ${
-                    activeTab === 'income' ? 'bg-green-600 hover:bg-green-700' :
-                    activeTab === 'expense' ? 'bg-red-600 hover:bg-red-700' :
-                    'bg-blue-600 hover:bg-blue-700'
-                  }`}
+                  className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700"
                   disabled={createTransaction.isPending}
                 >
                   {createTransaction.isPending ? 'Menyimpan...' : 'Simpan Transaksi'}
