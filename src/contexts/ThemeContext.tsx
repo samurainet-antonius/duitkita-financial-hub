@@ -1,12 +1,12 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-type Theme = 'light' | 'dark' | 'system';
+type Theme = 'light';
 
 interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
-  actualTheme: 'light' | 'dark';
+  actualTheme: 'light';
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -22,21 +22,21 @@ export const useTheme = () => {
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>(() => {
     const stored = localStorage.getItem('theme') as Theme;
-    return stored || 'system';
+    return stored || 'light';
   });
 
-  const [actualTheme, setActualTheme] = useState<'light' | 'dark'>('light');
+  const [actualTheme, setActualTheme] = useState<'light'>('light');
 
   useEffect(() => {
     const root = window.document.documentElement;
     
     const updateTheme = () => {
-      let newTheme: 'light' | 'dark' = 'light';
+      let newTheme: 'light' = 'light';
       
-      if (theme === 'system') {
+      if (theme === 'light') {
         newTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       } else {
-        newTheme = theme as 'light' | 'dark';
+        newTheme = theme as 'light';
       }
       
       root.classList.remove('light', 'dark');
@@ -47,7 +47,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     updateTheme();
     localStorage.setItem('theme', theme);
 
-    if (theme === 'system') {
+    if (theme === 'light') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       mediaQuery.addEventListener('change', updateTheme);
       return () => mediaQuery.removeEventListener('change', updateTheme);
