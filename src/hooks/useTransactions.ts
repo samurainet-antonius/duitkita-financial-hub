@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +21,14 @@ export const useTransactions = (walletId?: string) => {
         .select(`
           *,
           categories (
+            name,
+            id
+          ),
+          wallets!transactions_wallet_id_fkey (
+            name,
+            id
+          ),
+          to_wallets:wallets!transactions_to_wallet_id_fkey (
             name,
             id
           )
@@ -55,11 +64,11 @@ export const useTransaction = (id: string) => {
             name,
             id
           ),
-          wallets (
+          wallets!transactions_wallet_id_fkey (
             name,
             id
           ),
-          to_wallets (
+          to_wallets:wallets!transactions_to_wallet_id_fkey (
             name,
             id
           )

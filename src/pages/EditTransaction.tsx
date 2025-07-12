@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -190,7 +189,7 @@ const EditTransaction = () => {
 
       await updateTransaction.mutateAsync({
         id: transaction.id,
-        updates: updateData
+        ...updateData
       });
 
       navigate(`/transaction-detail/${transaction.id}`);
