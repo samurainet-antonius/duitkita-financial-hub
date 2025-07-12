@@ -127,7 +127,7 @@ const EditWallet = () => {
         }
       });
 
-      navigate(`/wallet-detail/${wallet.id}`);
+      navigate(`/wallet/${wallet.id}`);
     } catch (error) {
       console.error('Error updating wallet:', error);
     }
@@ -162,7 +162,7 @@ const EditWallet = () => {
           <Button 
             variant="ghost" 
             size="sm"
-            onClick={() => navigate(`/wallet-detail/${wallet.id}`)}
+            onClick={() => navigate(`/wallet/${wallet.id}`)}
             className="text-white hover:bg-white/20 p-2"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -309,7 +309,7 @@ const EditWallet = () => {
                   type="button" 
                   variant="outline" 
                   className="flex-1"
-                  onClick={() => navigate(`/wallet-detail/${wallet.id}`)}
+                  onClick={() => navigate(`/wallet/${wallet.id}`)}
                   disabled={updateWallet.isPending}
                 >
                   Batal

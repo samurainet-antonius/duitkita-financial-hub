@@ -12,10 +12,6 @@ const ContactSupport = () => {
     window.location.href = 'mailto:support@duitkita.com?subject=Bantuan DuitKita';
   };
 
-  const handleWhatsApp = () => {
-    window.open('https://wa.me/6281234567890?text=Halo, saya butuh bantuan dengan aplikasi DuitKita', '_blank');
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
@@ -51,24 +47,6 @@ const ContactSupport = () => {
             <Button onClick={handleEmailSupport} className="w-full">
               <Mail className="h-4 w-4 mr-2" />
               Kirim Email
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <MessageCircle className="h-5 w-5" />
-              <span>WhatsApp</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 mb-4">
-              Chat langsung dengan tim support melalui WhatsApp untuk respon yang lebih cepat.
-            </p>
-            <Button onClick={handleWhatsApp} className="w-full bg-green-600 hover:bg-green-700">
-              <MessageCircle className="h-4 w-4 mr-2" />
-              Chat WhatsApp
             </Button>
           </CardContent>
         </Card>

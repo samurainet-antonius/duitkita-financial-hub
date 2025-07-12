@@ -210,7 +210,7 @@ const Wallets = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate(`/wallet-detail/${wallet.id}`)}
+                      onClick={() => navigate(`/wallet/${wallet.id}`)}
                     >
                       Lihat Detail
                     </Button>

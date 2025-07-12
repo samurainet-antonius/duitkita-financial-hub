@@ -1,5 +1,5 @@
 
-import { Home, Wallet, Receipt } from "lucide-react";
+import { Home, Wallet, Receipt, Settings } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 const BottomNavigation = () => {
@@ -15,7 +15,7 @@ const BottomNavigation = () => {
     },
     {
       icon: Wallet,
-      label: "Wallet",
+      label: "Dompet",
       path: "/wallets",
       active: location.pathname === "/wallets"
     },
@@ -24,6 +24,12 @@ const BottomNavigation = () => {
       label: "Transaksi",
       path: "/transactions",
       active: location.pathname === "/transactions"
+    },
+    {
+      icon: Settings,
+      label: "Pengaturan",
+      path: "/settings",
+      active: location.pathname === "/settings"
     }
   ];
 

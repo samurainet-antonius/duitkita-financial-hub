@@ -25,6 +25,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import ContactSupport from "./pages/ContactSupport";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { AuthProvider } from "@/hooks/useAuth"; // 🆕 Tambahkan ini
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ function App() {
       <ThemeProvider>
         <TooltipProvider>
           <Toaster />
+          <AuthProvider> {/* 🆕 Tambahkan di sini */}
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
@@ -58,6 +60,7 @@ function App() {
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
+          </AuthProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>

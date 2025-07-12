@@ -137,28 +137,27 @@ const WalletDetail = () => {
 
       <div className="p-4 space-y-4">
         {/* Wallet Info */}
-        <Card className="bg-gradient-to-r text-white"
-              style={{ background: `linear-gradient(to right, ${wallet.color}, ${wallet.color}dd)` }}>
+        <Card className="bg-gradient-to-r text-black">
           <CardContent className="p-6">
             <div className="flex justify-between items-start mb-4">
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Icon className="h-6 w-6 text-white" />
+                  <Icon className="h-6 w-6 text-black" />
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold">{wallet.name}</h3>
-                  <p className="text-white/80">{getWalletTypeLabel(wallet.type)}</p>
+                  <p className="text-black/80">{getWalletTypeLabel(wallet.type)}</p>
                   {wallet.account_number && (
-                    <p className="text-white/80 text-sm">{wallet.account_number}</p>
+                    <p className="text-black/80 text-sm">{wallet.account_number}</p>
                   )}
                 </div>
               </div>
-              <Badge variant="secondary" className="bg-white/20 text-white">
+              <Badge variant="secondary" className="bg-white/20 text-black">
                 IDR
               </Badge>
             </div>
             <div>
-              <p className="text-white/80 text-sm">Saldo Tersedia</p>
+              <p className="text-black/80 text-sm">Saldo Tersedia</p>
               <p className="text-2xl font-bold">{formatCurrency(wallet.balance || 0)}</p>
             </div>
           </CardContent>
@@ -219,7 +218,7 @@ const WalletDetail = () => {
                   <div 
                     key={transaction.id}
                     className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
-                    onClick={() => navigate(`/transaction-detail/${transaction.id}`)}
+                    onClick={() => navigate(`/transaction/${transaction.id}`)}
                   >
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">

@@ -192,7 +192,7 @@ const EditTransaction = () => {
         ...updateData
       });
 
-      navigate(`/transaction-detail/${transaction.id}`);
+      navigate(`/transaction/${transaction.id}`);
     } catch (error) {
       console.error('Error updating transaction:', error);
     }
@@ -211,7 +211,7 @@ const EditTransaction = () => {
           <Button 
             variant="ghost" 
             size="sm"
-            onClick={() => navigate(`/transaction-detail/${transaction.id}`)}
+            onClick={() => navigate(`/transaction/${transaction.id}`)}
             className="text-white hover:bg-white/20 p-2"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -445,7 +445,7 @@ const EditTransaction = () => {
                   type="button" 
                   variant="outline" 
                   className="flex-1"
-                  onClick={() => navigate(`/transaction-detail/${transaction.id}`)}
+                  onClick={() => navigate(`/transaction/${transaction.id}`)}
                   disabled={updateTransaction.isPending || uploading}
                 >
                   Batal

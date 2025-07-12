@@ -115,13 +115,6 @@ const Transactions = () => {
             >
               <SlidersHorizontal className="h-5 w-5" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-white hover:bg-white/20"
-            >
-              <Download className="h-5 w-5" />
-            </Button>
           </div>
         </div>
 
@@ -282,7 +275,7 @@ const Transactions = () => {
                   <Card 
                     key={transaction.id} 
                     className="hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => navigate(`/transaction-detail/${transaction.id}`)}
+                    onClick={() => navigate(`/transaction/${transaction.id}`)}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">

@@ -37,8 +37,6 @@ const Index = () => {
     "Unlimited transaksi",
     "Analytics mendalam",
     "Sync dengan pasangan",
-    "Backup otomatis",
-    "Customer support 24/7"
   ];
 
   const handleHomeClick = () => {
@@ -139,13 +137,6 @@ const Index = () => {
                     Mulai Gratis Sekarang
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
-                  <Button 
-                    size="lg"
-                    variant="outline"
-                    className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 text-lg px-8 py-3"
-                  >
-                    Lihat Demo
-                  </Button>
                 </>
               )}
             </div>
@@ -236,10 +227,10 @@ const Index = () => {
           <div className="container mx-auto px-4">
             <div className="text-center space-y-4 mb-16">
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
-                Mulai Gratis, Upgrade Kapan Saja
+                Mulai Gratis, Tanpa Biaya Apapun
               </h2>
               <p className="text-lg text-gray-600">
-                Nikmati semua fitur premium tanpa batasan
+                Nikmati semua fitur tanpa batasan
               </p>
             </div>
 
@@ -247,11 +238,10 @@ const Index = () => {
               <Card className="border-2 border-emerald-200 shadow-xl">
                 <CardContent className="p-8 text-center space-y-6">
                   <div className="space-y-2">
-                    <h3 className="text-2xl font-bold text-gray-900">Premium</h3>
+                    <h3 className="text-2xl font-bold text-gray-900">Freemium</h3>
                     <div className="text-4xl font-bold text-emerald-600">
-                      Rp 49k<span className="text-lg text-gray-600">/bulan</span>
+                      Rp 0
                     </div>
-                    <p className="text-sm text-gray-600">Atau Rp 490k/tahun (hemat 2 bulan)</p>
                   </div>
 
                   <div className="space-y-3">
@@ -268,11 +258,11 @@ const Index = () => {
                     className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700"
                     onClick={() => navigate('/register')}
                   >
-                    Mulai Gratis 30 Hari
+                    Daftar Sekarang
                   </Button>
                   
                   <p className="text-xs text-gray-500">
-                    Tidak ada komitmen. Batalkan kapan saja.
+                    Nikmati sepuasnya tanpa harus membayar.
                   </p>
                 </CardContent>
               </Card>
@@ -336,18 +326,13 @@ const Index = () => {
               <div className="space-y-2 text-sm text-gray-400">
                 <div>Help Center</div>
                 <div>Kontak Kami</div>
-                <div>Status</div>
-                <div>API Docs</div>
               </div>
             </div>
 
             <div className="space-y-4">
-              <h4 className="font-semibold">Legal</h4>
+              <h4 className="font-semibold">Donasi</h4>
               <div className="space-y-2 text-sm text-gray-400">
                 <div>Privacy Policy</div>
-                <div>Terms of Service</div>
-                <div>Security</div>
-                <div>GDPR</div>
               </div>
             </div>
           </div>

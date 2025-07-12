@@ -296,7 +296,7 @@ const Dashboard = () => {
                   <div 
                     key={transaction.id}
                     className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/transaction-detail/${transaction.id}`)}
+                    onClick={() => navigate(`/transaction/${transaction.id}`)}
                   >
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
