@@ -7,7 +7,7 @@ import { componentTagger } from "lovable-tagger";
 const repoName = 'duitkita-financial-hub';
 
 export default defineConfig(({ mode }) => ({
-  base: `/${repoName}`, // ✅ Tambahkan ini
+  base: `/${repoName}/`, // ✅ Tambahkan ini
   server: {
     host: "::",
     port: 8080,

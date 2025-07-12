@@ -2,7 +2,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -32,11 +32,11 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
+      {/* <ThemeProvider> */}
         <TooltipProvider>
           <Toaster />
           <AuthProvider> {/* 🆕 Tambahkan di sini */}
-          <BrowserRouter>
+          <HashRouter>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
@@ -59,10 +59,10 @@ function App() {
               <Route path="/contact-support" element={<ProtectedRoute><ContactSupport /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
+          </HashRouter>
           </AuthProvider>
         </TooltipProvider>
-      </ThemeProvider>
+      {/* </ThemeProvider> */}
     </QueryClientProvider>
   );
 }

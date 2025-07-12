@@ -23,7 +23,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNotifications, useUpdateNotifications } from "@/hooks/useNotifications";
 import { useExportData } from "@/hooks/useExportData";
 import { useDeleteAccount } from "@/hooks/useDeleteAccount";
-import { useTheme } from "@/contexts/ThemeContext";
 import BottomNavigation from "@/components/BottomNavigation";
 
 const Settings = () => {
@@ -33,7 +32,6 @@ const Settings = () => {
   const updateNotifications = useUpdateNotifications();
   const { exportData } = useExportData();
   const deleteAccount = useDeleteAccount();
-  const { theme, setTheme, actualTheme } = useTheme();
   const [exportLoading, setExportLoading] = useState<string | null>(null);
 
   const handleSignOut = async () => {
