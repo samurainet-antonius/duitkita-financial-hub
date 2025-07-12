@@ -16,6 +16,8 @@ import AddTransaction from "./pages/AddTransaction";
 import AddWallet from "./pages/AddWallet";
 import TransactionDetail from "./pages/TransactionDetail";
 import WalletDetail from "./pages/WalletDetail";
+import EditWallet from "./pages/EditWallet";
+import EditTransaction from "./pages/EditTransaction";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
@@ -68,6 +70,16 @@ const App = () => (
             <Route path="/wallet-detail/:id" element={
               <ProtectedRoute>
                 <WalletDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/edit-wallet/:id" element={
+              <ProtectedRoute>
+                <EditWallet />
+              </ProtectedRoute>
+            } />
+            <Route path="/edit-transaction/:id" element={
+              <ProtectedRoute>
+                <EditTransaction />
               </ProtectedRoute>
             } />
             <Route path="/settings" element={

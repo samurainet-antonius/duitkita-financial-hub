@@ -1,177 +1,52 @@
 
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   ArrowLeft, 
   User, 
-  Lock, 
   Bell, 
-  Shield, 
-  FileText, 
-  HelpCircle, 
-  Heart,
+  Download, 
+  Trash2, 
   LogOut,
-  ChevronRight,
-  Smartphone,
-  Mail,
-  Download
+  Shield,
+  HelpCircle,
+  Moon,
+  Sun
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import BottomNavigation from "@/components/BottomNavigation";
-import PrivacyPolicyModal from "@/components/PrivacyPolicyModal";
-import TermsModal from "@/components/TermsModal";
 import { useAuth } from "@/hooks/useAuth";
-import { useNotifications, useUpdateNotifications, useTriggerBackup } from "@/hooks/useNotifications";
+import { useNotifications } from "@/hooks/useNotifications";
+import { useExportData } from "@/hooks/useExportData";
+import BottomNavigation from "@/components/BottomNavigation";
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { signOut } = useAuth();
-  const { data: notifications } = useNotifications();
-  const updateNotifications = useUpdateNotifications();
-  const triggerBackup = useTriggerBackup();
-  
-  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
-  const [showTermsModal, setShowTermsModal] = useState(false);
+  const { user, signOut } = useAuth();
+  const { data: notifications, updateNotifications } = useNotifications();
+  const { exportData } = useExportData();
+  const [theme, setTheme] = useState("light");
 
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      toast({
-        title: "Logout Berhasil",
-        description: "Anda telah keluar dari DuitKita.",
-      });
-      navigate('/');
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Terjadi kesalahan saat logout",
-        variant: "destructive",
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
+
+  const handleExport = (type: 'wallets' | 'transactions' | 'all') => {
+    exportData(type, 'csv');
+  };
+
+  const handleNotificationChange = (key: string, value: boolean) => {
+    if (notifications) {
+      updateNotifications.mutate({
+        ...notifications,
+        [key]: value
       });
     }
   };
-
-  const handleNotificationChange = (field: string, value: boolean) => {
-    updateNotifications.mutate({ [field]: value });
-  };
-
-  const handleManualBackup = () => {
-    triggerBackup.mutate();
-  };
-
-  const menuItems = [
-    {
-      section: "Akun",
-      items: [
-        {
-          icon: User,
-          title: "Edit Profile",
-          description: "Ubah data personal Anda",
-          action: () => navigate('/edit-profile')
-        },
-        {
-          icon: Lock,
-          title: "Ubah Password",
-          description: "Ganti password akun",
-          action: () => navigate('/change-password')
-        }
-      ]
-    },
-    {
-      section: "Notifikasi",
-      items: [
-        {
-          icon: Bell,
-          title: "Push Notification",
-          description: "Notifikasi dari aplikasi",
-          type: "switch",
-          value: notifications?.push_notifications || false,
-          onChange: (checked) => handleNotificationChange('push_notifications', checked)
-        },
-        {
-          icon: Mail,
-          title: "Email Notification",
-          description: "Notifikasi via email",
-          type: "switch",
-          value: notifications?.email_notifications || false,
-          onChange: (checked) => handleNotificationChange('email_notifications', checked)
-        },
-        {
-          icon: Smartphone,
-          title: "Notif Transaksi",
-          description: "Pemberitahuan setiap transaksi",
-          type: "switch",
-          value: notifications?.transaction_notifications || false,
-          onChange: (checked) => handleNotificationChange('transaction_notifications', checked)
-        },
-        {
-          icon: Bell,
-          title: "Notif Shared Wallet",
-          description: "Notifikasi dari dompet yang dibagikan",
-          type: "switch",
-          value: notifications?.shared_wallet_notifications || false,
-          onChange: (checked) => handleNotificationChange('shared_wallet_notifications', checked)
-        },
-        {
-          icon: Download,
-          title: "Backup Harian",
-          description: "Backup otomatis data ke email",
-          type: "switch",
-          value: notifications?.backup_notifications || false,
-          onChange: (checked) => handleNotificationChange('backup_notifications', checked)
-        }
-      ]
-    },
-    {
-      section: "Keamanan & Privasi",
-      items: [
-        {
-          icon: Shield,
-          title: "Keamanan Akun",
-          description: "Two-factor authentication",
-          action: () => toast({ title: "Coming Soon", description: "Fitur ini akan segera hadir!" })
-        },
-        {
-          icon: FileText,
-          title: "Kebijakan Privasi",
-          description: "Baca kebijakan privasi kami",
-          action: () => setShowPrivacyModal(true)
-        },
-        {
-          icon: FileText,
-          title: "Syarat & Ketentuan",
-          description: "Baca syarat dan ketentuan",
-          action: () => setShowTermsModal(true)
-        }
-      ]
-    },
-    {
-      section: "Data & Backup",
-      items: [
-        {
-          icon: Download,
-          title: "Export Data Manual",
-          description: "Download data keuangan sekarang",
-          action: handleManualBackup
-        },
-        {
-          icon: HelpCircle,
-          title: "Bantuan",
-          description: "FAQ dan customer support",
-          action: () => toast({ title: "Bantuan", description: "Hubungi kami di support@duitkita.com" })
-        },
-        {
-          icon: Heart,
-          title: "Donasi",
-          description: "Dukung pengembangan DuitKita",
-          action: () => toast({ title: "Terima Kasih!", description: "Dukungan Anda sangat berarti bagi kami ❤️" })
-        }
-      ]
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -188,92 +63,262 @@ const Settings = () => {
           </Button>
           <div>
             <h1 className="text-lg font-semibold">Pengaturan</h1>
-            <p className="text-emerald-100 text-sm">Kelola akun dan preferensi</p>
+            <p className="text-emerald-100 text-sm">Kelola preferensi akun Anda</p>
           </div>
         </div>
       </div>
 
       <div className="p-4 space-y-6">
-        {menuItems.map((section, sectionIndex) => (
-          <div key={sectionIndex}>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">{section.section}</h2>
-            <Card>
-              <CardContent className="p-0">
-                {section.items.map((item, itemIndex) => {
-                  const Icon = item.icon;
-                  return (
-                    <div key={itemIndex}>
-                      <div 
-                        className={`flex items-center justify-between p-4 ${
-                          item.type === 'switch' ? '' : 'hover:bg-gray-50 cursor-pointer'
-                        } transition-colors`}
-                        onClick={item.type !== 'switch' ? item.action : undefined}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                            <Icon className="h-5 w-5 text-emerald-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{item.title}</p>
-                            <p className="text-sm text-gray-500">{item.description}</p>
-                          </div>
-                        </div>
-                        
-                        {item.type === 'switch' ? (
-                          <Switch
-                            checked={item.value}
-                            onCheckedChange={item.onChange}
-                            disabled={updateNotifications.isPending}
-                          />
-                        ) : (
-                          <ChevronRight className="h-5 w-5 text-gray-400" />
-                        )}
-                      </div>
-                      {itemIndex < section.items.length - 1 && (
-                        <div className="border-t border-gray-100 ml-16" />
-                      )}
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          </div>
-        ))}
-
-        {/* App Info */}
+        {/* Profile Section */}
         <Card>
-          <CardContent className="p-4 text-center space-y-2">
-            <div className="w-16 h-16 bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl flex items-center justify-center mx-auto">
-              <span className="text-white font-bold text-xl">D</span>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <User className="h-5 w-5" />
+              <span>Profil</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Kelola Profil</p>
+                <p className="text-sm text-gray-500">Edit informasi personal Anda</p>
+              </div>
+              <Button variant="outline" onClick={() => navigate('/profile')}>
+                Edit
+              </Button>
             </div>
-            <h3 className="font-semibold text-gray-900">DuitKita</h3>
-            <p className="text-sm text-gray-500">Version 1.0.0</p>
-            <p className="text-xs text-gray-400">
-              © 2024 DuitKita. All rights reserved.
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Ubah Password</p>
+                <p className="text-sm text-gray-500">Perbarui kata sandi akun</p>
+              </div>
+              <Button variant="outline" onClick={() => navigate('/change-password')}>
+                Ubah
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Logout Button */}
-        <Button 
-          variant="destructive" 
-          className="w-full"
-          onClick={handleLogout}
-        >
-          <LogOut className="h-4 w-4 mr-2" />
-          Keluar dari Akun
-        </Button>
-      </div>
+        {/* Notifications */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Bell className="h-5 w-5" />
+              <span>Notifikasi</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="push-notifications">Push Notifications</Label>
+                <p className="text-sm text-gray-500">Terima notifikasi push di perangkat</p>
+              </div>
+              <Switch
+                id="push-notifications"
+                checked={notifications?.push_notifications ?? true}
+                onCheckedChange={(checked) => handleNotificationChange('push_notifications', checked)}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="email-notifications">Email Notifications</Label>
+                <p className="text-sm text-gray-500">Terima notifikasi melalui email</p>
+              </div>
+              <Switch
+                id="email-notifications"
+                checked={notifications?.email_notifications ?? false}
+                onCheckedChange={(checked) => handleNotificationChange('email_notifications', checked)}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="transaction-notifications">Notifikasi Transaksi</Label>
+                <p className="text-sm text-gray-500">Notifikasi untuk setiap transaksi baru</p>
+              </div>
+              <Switch
+                id="transaction-notifications"
+                checked={notifications?.transaction_notifications ?? true}
+                onCheckedChange={(checked) => handleNotificationChange('transaction_notifications', checked)}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="shared-wallet-notifications">Notifikasi Dompet Bersama</Label>
+                <p className="text-sm text-gray-500">Notifikasi dari dompet yang dibagikan</p>
+              </div>
+              <Switch
+                id="shared-wallet-notifications"
+                checked={notifications?.shared_wallet_notifications ?? true}
+                onCheckedChange={(checked) => handleNotificationChange('shared_wallet_notifications', checked)}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="backup-notifications">Notifikasi Backup</Label>
+                <p className="text-sm text-gray-500">Notifikasi untuk backup otomatis</p>
+              </div>
+              <Switch
+                id="backup-notifications"
+                checked={notifications?.backup_notifications ?? true}
+                onCheckedChange={(checked) => handleNotificationChange('backup_notifications', checked)}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Modals */}
-      <PrivacyPolicyModal 
-        open={showPrivacyModal} 
-        onOpenChange={setShowPrivacyModal} 
-      />
-      <TermsModal 
-        open={showTermsModal} 
-        onOpenChange={setShowTermsModal} 
-      />
+        {/* Theme */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              {theme === "light" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              <span>Tampilan</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Tema Aplikasi</Label>
+                <p className="text-sm text-gray-500">Pilih tema yang Anda sukai</p>
+              </div>
+              <Select value={theme} onValueChange={setTheme}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="light">Terang</SelectItem>
+                  <SelectItem value="dark">Gelap</SelectItem>
+                  <SelectItem value="system">Sistem</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Data Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Download className="h-5 w-5" />
+              <span>Kelola Data</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Export Semua Data</p>
+                <p className="text-sm text-gray-500">Download semua dompet dan transaksi</p>
+              </div>
+              <Button variant="outline" onClick={() => handleExport('all')}>
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Export Dompet</p>
+                <p className="text-sm text-gray-500">Download data dompet saja</p>
+              </div>
+              <Button variant="outline" onClick={() => handleExport('wallets')}>
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Export Transaksi</p>
+                <p className="text-sm text-gray-500">Download data transaksi saja</p>
+              </div>
+              <Button variant="outline" onClick={() => handleExport('transactions')}>
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Support */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <HelpCircle className="h-5 w-5" />
+              <span>Bantuan & Dukungan</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">FAQ</p>
+                <p className="text-sm text-gray-500">Pertanyaan yang sering diajukan</p>
+              </div>
+              <Button variant="outline">
+                Lihat
+              </Button>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Kontak Support</p>
+                <p className="text-sm text-gray-500">Hubungi tim dukungan kami</p>
+              </div>
+              <Button variant="outline">
+                Kontak
+              </Button>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Privacy Policy</p>
+                <p className="text-sm text-gray-500">Kebijakan privasi aplikasi</p>
+              </div>
+              <Button variant="outline">
+                Baca
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Account Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Shield className="h-5 w-5" />
+              <span>Akun</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-red-600">Hapus Akun</p>
+                <p className="text-sm text-gray-500">Hapus akun dan semua data secara permanen</p>
+              </div>
+              <Button variant="destructive" size="sm">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Hapus
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Sign Out */}
+        <Card>
+          <CardContent className="p-4">
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={handleSignOut}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Keluar dari Akun
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
 
       <BottomNavigation />
     </div>

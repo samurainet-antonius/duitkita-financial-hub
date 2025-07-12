@@ -2,11 +2,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, Shield, Users, TrendingUp, Smartphone, Check } from "lucide-react";
+import { ArrowRight, Shield, Users, TrendingUp, Smartphone, Check, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   
   const features = [
     {
@@ -39,31 +41,67 @@ const Index = () => {
     "Customer support 24/7"
   ];
 
+  const handleHomeClick = () => {
+    if (user) {
+      navigate('/dashboard');
+    } else {
+      // Scroll to top if not logged in
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    window.location.reload(); // Refresh to update UI state
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-green-50">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-emerald-100 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 cursor-pointer" onClick={handleHomeClick}>
             <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-green-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">D</span>
             </div>
             <span className="text-xl font-bold text-gray-800">DuitKita</span>
           </div>
           <div className="flex space-x-3">
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate('/login')}
-              className="text-emerald-600 hover:text-emerald-700"
-            >
-              Masuk
-            </Button>
-            <Button 
-              onClick={() => navigate('/register')}
-              className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700"
-            >
-              Daftar Gratis
-            </Button>
+            {user ? (
+              <>
+                <Button 
+                  variant="ghost" 
+                  onClick={() => navigate('/dashboard')}
+                  className="text-emerald-600 hover:text-emerald-700"
+                >
+                  Dashboard
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={handleSignOut}
+                  className="text-gray-600 hover:text-gray-700"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Keluar
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button 
+                  variant="ghost" 
+                  onClick={() => navigate('/login')}
+                  className="text-emerald-600 hover:text-emerald-700"
+                >
+                  Masuk
+                </Button>
+                <Button 
+                  onClick={() => navigate('/register')}
+                  className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700"
+                >
+                  Daftar Gratis
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -82,33 +120,48 @@ const Index = () => {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button 
-                size="lg"
-                onClick={() => navigate('/register')}
-                className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-lg px-8 py-3"
-              >
-                Mulai Gratis Sekarang
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-              <Button 
-                size="lg"
-                variant="outline"
-                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 text-lg px-8 py-3"
-              >
-                Lihat Demo
-              </Button>
+              {user ? (
+                <Button 
+                  size="lg"
+                  onClick={() => navigate('/dashboard')}
+                  className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-lg px-8 py-3"
+                >
+                  Buka Dashboard
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              ) : (
+                <>
+                  <Button 
+                    size="lg"
+                    onClick={() => navigate('/register')}
+                    className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-lg px-8 py-3"
+                  >
+                    Mulai Gratis Sekarang
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                  <Button 
+                    size="lg"
+                    variant="outline"
+                    className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 text-lg px-8 py-3"
+                  >
+                    Lihat Demo
+                  </Button>
+                </>
+              )}
             </div>
 
-            <div className="flex items-center space-x-6 text-sm text-gray-500">
-              <div className="flex items-center space-x-2">
-                <Check className="h-4 w-4 text-emerald-500" />
-                <span>Gratis selamanya</span>
+            {!user && (
+              <div className="flex items-center space-x-6 text-sm text-gray-500">
+                <div className="flex items-center space-x-2">
+                  <Check className="h-4 w-4 text-emerald-500" />
+                  <span>Gratis selamanya</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Check className="h-4 w-4 text-emerald-500" />
+                  <span>No credit card required</span>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <Check className="h-4 w-4 text-emerald-500" />
-                <span>No credit card required</span>
-              </div>
-            </div>
+            )}
           </div>
 
           <div className="relative">
@@ -177,71 +230,76 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section className="bg-gradient-to-br from-emerald-50 to-green-50 py-16 md:py-24">
-        <div className="container mx-auto px-4">
-          <div className="text-center space-y-4 mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
-              Mulai Gratis, Upgrade Kapan Saja
-            </h2>
-            <p className="text-lg text-gray-600">
-              Nikmati semua fitur premium tanpa batasan
-            </p>
-          </div>
+      {/* Pricing - Only show if user is not logged in */}
+      {!user && (
+        <section className="bg-gradient-to-br from-emerald-50 to-green-50 py-16 md:py-24">
+          <div className="container mx-auto px-4">
+            <div className="text-center space-y-4 mb-16">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
+                Mulai Gratis, Upgrade Kapan Saja
+              </h2>
+              <p className="text-lg text-gray-600">
+                Nikmati semua fitur premium tanpa batasan
+              </p>
+            </div>
 
-          <div className="max-w-md mx-auto">
-            <Card className="border-2 border-emerald-200 shadow-xl">
-              <CardContent className="p-8 text-center space-y-6">
-                <div className="space-y-2">
-                  <h3 className="text-2xl font-bold text-gray-900">Premium</h3>
-                  <div className="text-4xl font-bold text-emerald-600">
-                    Rp 49k<span className="text-lg text-gray-600">/bulan</span>
-                  </div>
-                  <p className="text-sm text-gray-600">Atau Rp 490k/tahun (hemat 2 bulan)</p>
-                </div>
-
-                <div className="space-y-3">
-                  {pricing.map((item, index) => (
-                    <div key={index} className="flex items-center space-x-3">
-                      <Check className="h-5 w-5 text-emerald-500" />
-                      <span className="text-gray-700">{item}</span>
+            <div className="max-w-md mx-auto">
+              <Card className="border-2 border-emerald-200 shadow-xl">
+                <CardContent className="p-8 text-center space-y-6">
+                  <div className="space-y-2">
+                    <h3 className="text-2xl font-bold text-gray-900">Premium</h3>
+                    <div className="text-4xl font-bold text-emerald-600">
+                      Rp 49k<span className="text-lg text-gray-600">/bulan</span>
                     </div>
-                  ))}
-                </div>
+                    <p className="text-sm text-gray-600">Atau Rp 490k/tahun (hemat 2 bulan)</p>
+                  </div>
 
-                <Button 
-                  size="lg" 
-                  className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700"
-                  onClick={() => navigate('/register')}
-                >
-                  Mulai Gratis 30 Hari
-                </Button>
-                
-                <p className="text-xs text-gray-500">
-                  Tidak ada komitmen. Batalkan kapan saja.
-                </p>
-              </CardContent>
-            </Card>
+                  <div className="space-y-3">
+                    {pricing.map((item, index) => (
+                      <div key={index} className="flex items-center space-x-3">
+                        <Check className="h-5 w-5 text-emerald-500" />
+                        <span className="text-gray-700">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <Button 
+                    size="lg" 
+                    className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700"
+                    onClick={() => navigate('/register')}
+                  >
+                    Mulai Gratis 30 Hari
+                  </Button>
+                  
+                  <p className="text-xs text-gray-500">
+                    Tidak ada komitmen. Batalkan kapan saja.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* CTA */}
       <section className="bg-gradient-to-r from-emerald-500 to-green-600 py-16">
         <div className="container mx-auto px-4 text-center text-white space-y-8">
           <h2 className="text-3xl md:text-4xl font-bold">
-            Siap Mengelola Keuangan Lebih Smart?
+            {user ? 'Selamat Datang Kembali!' : 'Siap Mengelola Keuangan Lebih Smart?'}
           </h2>
           <p className="text-xl opacity-90 max-w-2xl mx-auto">
-            Bergabung dengan ribuan pasangan yang sudah merasakan kemudahan mengelola keuangan bersama
+            {user 
+              ? 'Lanjutkan mengelola keuangan Anda dengan fitur-fitur canggih DuitKita'
+              : 'Bergabung dengan ribuan pasangan yang sudah merasakan kemudahan mengelola keuangan bersama'
+            }
           </p>
           <Button 
             size="lg"
             variant="secondary"
             className="bg-white text-emerald-600 hover:bg-gray-100 text-lg px-8 py-3"
-            onClick={() => navigate('/register')}
+            onClick={() => navigate(user ? '/dashboard' : '/register')}
           >
-            Daftar Sekarang - Gratis!
+            {user ? 'Buka Dashboard' : 'Daftar Sekarang - Gratis!'}
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </div>
