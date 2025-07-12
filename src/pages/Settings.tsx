@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -23,17 +24,16 @@ import BottomNavigation from "@/components/BottomNavigation";
 import PrivacyPolicyModal from "@/components/PrivacyPolicyModal";
 import TermsModal from "@/components/TermsModal";
 import { useAuth } from "@/hooks/useAuth";
+import { useNotifications, useUpdateNotifications, useTriggerBackup } from "@/hooks/useNotifications";
 
 const Settings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { signOut } = useAuth();
-  const [notifications, setNotifications] = useState({
-    push: true,
-    email: false,
-    transactions: true,
-    reports: true
-  });
+  const { data: notifications } = useNotifications();
+  const updateNotifications = useUpdateNotifications();
+  const triggerBackup = useTriggerBackup();
+  
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
 
@@ -52,6 +52,14 @@ const Settings = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleNotificationChange = (field: string, value: boolean) => {
+    updateNotifications.mutate({ [field]: value });
+  };
+
+  const handleManualBackup = () => {
+    triggerBackup.mutate();
   };
 
   const menuItems = [
@@ -80,24 +88,40 @@ const Settings = () => {
           title: "Push Notification",
           description: "Notifikasi dari aplikasi",
           type: "switch",
-          value: notifications.push,
-          onChange: (checked) => setNotifications(prev => ({ ...prev, push: checked }))
+          value: notifications?.push_notifications || false,
+          onChange: (checked) => handleNotificationChange('push_notifications', checked)
         },
         {
           icon: Mail,
           title: "Email Notification",
           description: "Notifikasi via email",
           type: "switch",
-          value: notifications.email,
-          onChange: (checked) => setNotifications(prev => ({ ...prev, email: checked }))
+          value: notifications?.email_notifications || false,
+          onChange: (checked) => handleNotificationChange('email_notifications', checked)
         },
         {
           icon: Smartphone,
           title: "Notif Transaksi",
           description: "Pemberitahuan setiap transaksi",
           type: "switch",
-          value: notifications.transactions,
-          onChange: (checked) => setNotifications(prev => ({ ...prev, transactions: checked }))
+          value: notifications?.transaction_notifications || false,
+          onChange: (checked) => handleNotificationChange('transaction_notifications', checked)
+        },
+        {
+          icon: Bell,
+          title: "Notif Shared Wallet",
+          description: "Notifikasi dari dompet yang dibagikan",
+          type: "switch",
+          value: notifications?.shared_wallet_notifications || false,
+          onChange: (checked) => handleNotificationChange('shared_wallet_notifications', checked)
+        },
+        {
+          icon: Download,
+          title: "Backup Harian",
+          description: "Backup otomatis data ke email",
+          type: "switch",
+          value: notifications?.backup_notifications || false,
+          onChange: (checked) => handleNotificationChange('backup_notifications', checked)
         }
       ]
     },
@@ -125,13 +149,13 @@ const Settings = () => {
       ]
     },
     {
-      section: "Lainnya",
+      section: "Data & Backup",
       items: [
         {
           icon: Download,
-          title: "Export Data",
-          description: "Download data keuangan Anda",
-          action: () => toast({ title: "Export Dimulai", description: "Data akan dikirim via email dalam beberapa menit." })
+          title: "Export Data Manual",
+          description: "Download data keuangan sekarang",
+          action: handleManualBackup
         },
         {
           icon: HelpCircle,
@@ -199,6 +223,7 @@ const Settings = () => {
                           <Switch
                             checked={item.value}
                             onCheckedChange={item.onChange}
+                            disabled={updateNotifications.isPending}
                           />
                         ) : (
                           <ChevronRight className="h-5 w-5 text-gray-400" />

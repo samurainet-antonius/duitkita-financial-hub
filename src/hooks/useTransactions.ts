@@ -1,42 +1,72 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useSendTransactionNotification } from './useTransactionNotifications';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 
 type Transaction = Tables<'transactions'>;
-type TransactionInsert = Omit<TablesInsert<'transactions'>, 'user_id'>;
+type TransactionInsert = TablesInsert<'transactions'>;
 type TransactionUpdate = TablesUpdate<'transactions'>;
 
 export const useTransactions = (walletId?: string) => {
   return useQuery({
     queryKey: ['transactions', walletId],
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       let query = supabase
         .from('transactions')
         .select(`
           *,
           categories (
-            id,
             name,
-            color,
-            icon
-          ),
-          wallets!transactions_wallet_id_fkey (
-            id,
-            name
-          ),
-          to_wallets:wallets!transactions_to_wallet_id_fkey (
-            id,
-            name
+            id
           )
-        `);
-      
+        `)
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .order('time', { ascending: false });
+
       if (walletId) {
-        query = query.or(`wallet_id.eq.${walletId},to_wallet_id.eq.${walletId}`);
+        query = query.eq('wallet_id', walletId);
       }
-      
-      const { data, error } = await query.order('date', { ascending: false }).order('time', { ascending: false });
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return data;
+    },
+  });
+};
+
+export const useTransaction = (id: string) => {
+  return useQuery({
+    queryKey: ['transaction', id],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          categories (
+            name,
+            id
+          ),
+          wallets (
+            name,
+            id
+          ),
+          to_wallets (
+            name,
+            id
+          )
+        `)
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .single();
       
       if (error) throw error;
       return data;
@@ -47,44 +77,36 @@ export const useTransactions = (walletId?: string) => {
 export const useCreateTransaction = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const sendNotification = useSendTransactionNotification();
 
   return useMutation({
-    mutationFn: async (transaction: TransactionInsert & { receiptFile?: File }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      let receiptUrl = null;
-
-      // Upload receipt if provided
-      if (transaction.receiptFile) {
-        const fileName = `${user.id}/${Date.now()}-${transaction.receiptFile.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('transaction-receipts')
-          .upload(fileName, transaction.receiptFile);
-
-        if (uploadError) throw uploadError;
-        receiptUrl = uploadData.path;
-      }
-
-      // Remove receiptFile from transaction data before inserting
-      const { receiptFile, ...transactionData } = transaction;
-
+    mutationFn: async (transaction: TransactionInsert) => {
       const { data, error } = await supabase
         .from('transactions')
-        .insert({
-          ...transactionData,
-          user_id: user.id,
-          receipt_url: receiptUrl,
-        })
+        .insert(transaction)
         .select()
         .single();
       
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['wallets'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      
+      // Send notification for shared wallet transactions
+      if (data.wallet_id && (data.type === 'income' || data.type === 'expense')) {
+        sendNotification.mutate({
+          transactionId: data.id,
+          walletId: data.wallet_id,
+          userId: data.user_id,
+          amount: data.amount,
+          description: data.description,
+          type: data.type as 'income' | 'expense' | 'transfer'
+        });
+      }
+      
       toast({
         title: 'Berhasil!',
         description: 'Transaksi berhasil ditambahkan.',
@@ -105,7 +127,7 @@ export const useUpdateTransaction = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: TransactionUpdate }) => {
+    mutationFn: async ({ id, ...updates }: { id: string } & TransactionUpdate) => {
       const { data, error } = await supabase
         .from('transactions')
         .update(updates)
@@ -118,7 +140,9 @@ export const useUpdateTransaction = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['transaction'] });
       queryClient.invalidateQueries({ queryKey: ['wallets'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast({
         title: 'Berhasil!',
         description: 'Transaksi berhasil diperbarui.',
@@ -149,7 +173,9 @@ export const useDeleteTransaction = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['wallets'] });
+      queryClient.invalidateQueries({ queryKey: ['transaction'] });
+       queryClient.invalidateQueries({ queryKey: ['wallets'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast({
         title: 'Berhasil!',
         description: 'Transaksi berhasil dihapus.',

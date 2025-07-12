@@ -179,6 +179,42 @@ export type Database = {
           },
         ]
       }
+      user_notifications: {
+        Row: {
+          backup_notifications: boolean | null
+          created_at: string
+          email_notifications: boolean | null
+          id: string
+          push_notifications: boolean | null
+          shared_wallet_notifications: boolean | null
+          transaction_notifications: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          backup_notifications?: boolean | null
+          created_at?: string
+          email_notifications?: boolean | null
+          id?: string
+          push_notifications?: boolean | null
+          shared_wallet_notifications?: boolean | null
+          transaction_notifications?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          backup_notifications?: boolean | null
+          created_at?: string
+          email_notifications?: boolean | null
+          id?: string
+          push_notifications?: boolean | null
+          shared_wallet_notifications?: boolean | null
+          transaction_notifications?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       wallets: {
         Row: {
           account_number: string | null
