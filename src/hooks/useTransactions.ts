@@ -90,9 +90,18 @@ export const useCreateTransaction = () => {
 
   return useMutation({
     mutationFn: async (transaction: TransactionInsert) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Ensure user_id is set
+      const transactionWithUserId = {
+        ...transaction,
+        user_id: user.id
+      };
+
       const { data, error } = await supabase
         .from('transactions')
-        .insert(transaction)
+        .insert(transactionWithUserId)
         .select()
         .single();
       
@@ -122,6 +131,7 @@ export const useCreateTransaction = () => {
       });
     },
     onError: (error) => {
+      console.error('Transaction creation error:', error);
       toast({
         title: 'Error',
         description: error.message,
@@ -137,10 +147,14 @@ export const useUpdateTransaction = () => {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: { id: string } & TransactionUpdate) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('transactions')
         .update(updates)
         .eq('id', id)
+        .eq('user_id', user.id)
         .select()
         .single();
       
@@ -158,6 +172,7 @@ export const useUpdateTransaction = () => {
       });
     },
     onError: (error) => {
+      console.error('Transaction update error:', error);
       toast({
         title: 'Error',
         description: error.message,
@@ -173,17 +188,21 @@ export const useDeleteTransaction = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { error } = await supabase
         .from('transactions')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user.id);
       
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['transaction'] });
-       queryClient.invalidateQueries({ queryKey: ['wallets'] });
+      queryClient.invalidateQueries({ queryKey: ['wallets'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast({
         title: 'Berhasil!',
@@ -191,6 +210,7 @@ export const useDeleteTransaction = () => {
       });
     },
     onError: (error) => {
+      console.error('Transaction deletion error:', error);
       toast({
         title: 'Error',
         description: error.message,
