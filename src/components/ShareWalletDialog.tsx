@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Share2, Trash2, Users, User } from 'lucide-react';
+import { Share2, Trash2, Users, User, Loader2 } from 'lucide-react';
 import { useShareWallet, useSharedWallets, useRemoveSharedAccess } from '@/hooks/useSharedWallets';
 
 interface ShareWalletDialogProps {
@@ -67,17 +67,17 @@ export const ShareWalletDialog = ({ walletId, walletName }: ShareWalletDialogPro
           {/* Share Form */}
           <form onSubmit={handleShare} className="space-y-3">
             <div>
-              <Label htmlFor="userEmail">Nama Lengkap Pengguna</Label>
+              <Label htmlFor="userEmail">Nama Lengkap atau Email Pengguna</Label>
               <Input
                 id="userEmail"
                 type="text"
-                placeholder="Masukkan nama lengkap pengguna"
+                placeholder="Contoh: John Doe atau john@email.com"
                 value={userEmail}
                 onChange={(e) => setUserEmail(e.target.value)}
                 required
               />
               <p className="text-xs text-gray-500 mt-1">
-                Pastikan nama sesuai dengan yang terdaftar di aplikasi
+                Masukkan nama lengkap yang persis sama dengan yang terdaftar di aplikasi, atau email pengguna
               </p>
             </div>
             <Button 
@@ -85,7 +85,14 @@ export const ShareWalletDialog = ({ walletId, walletName }: ShareWalletDialogPro
               className="w-full"
               disabled={shareWallet.isPending}
             >
-              {shareWallet.isPending ? 'Membagikan...' : 'Bagikan Dompet'}
+              {shareWallet.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Membagikan...
+                </>
+              ) : (
+                'Bagikan Dompet'
+              )}
             </Button>
           </form>
 
@@ -117,7 +124,11 @@ export const ShareWalletDialog = ({ walletId, walletName }: ShareWalletDialogPro
                         disabled={removeAccess.isPending}
                         className="text-red-500 hover:text-red-700 hover:bg-red-50"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        {removeAccess.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
                       </Button>
                     </div>
                   ))}
@@ -131,7 +142,7 @@ export const ShareWalletDialog = ({ walletId, walletName }: ShareWalletDialogPro
               <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">Belum ada pengguna yang memiliki akses</p>
               <p className="text-xs mt-1">
-                Pengguna yang dibagikan hanya dapat menambah transaksi
+                Pengguna yang dibagikan dapat menambah dan mengedit transaksi
               </p>
             </div>
           )}

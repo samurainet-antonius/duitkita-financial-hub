@@ -15,12 +15,15 @@ import {
   Shield,
   HelpCircle,
   Moon,
-  Sun
+  Sun,
+  Loader2
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications, useUpdateNotifications } from "@/hooks/useNotifications";
 import { useExportData } from "@/hooks/useExportData";
+import { useDeleteAccount } from "@/hooks/useDeleteAccount";
+import { useTheme } from "@/contexts/ThemeContext";
 import BottomNavigation from "@/components/BottomNavigation";
 
 const Settings = () => {
@@ -29,15 +32,22 @@ const Settings = () => {
   const { data: notifications } = useNotifications();
   const updateNotifications = useUpdateNotifications();
   const { exportData } = useExportData();
-  const [theme, setTheme] = useState("light");
+  const deleteAccount = useDeleteAccount();
+  const { theme, setTheme, actualTheme } = useTheme();
+  const [exportLoading, setExportLoading] = useState<string | null>(null);
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/');
   };
 
-  const handleExport = (type: 'wallets' | 'transactions' | 'all') => {
-    exportData(type, 'csv');
+  const handleExport = async (type: 'wallets' | 'transactions' | 'all') => {
+    setExportLoading(type);
+    try {
+      await exportData(type, 'csv');
+    } finally {
+      setExportLoading(null);
+    }
   };
 
   const handleNotificationChange = (key: string, value: boolean) => {
@@ -45,6 +55,12 @@ const Settings = () => {
       updateNotifications.mutate({
         [key]: value
       });
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    if (confirm('Apakah Anda yakin ingin menghapus akun? Tindakan ini tidak dapat dibatalkan dan semua data akan dihapus secara permanen.')) {
+      deleteAccount.mutate();
     }
   };
 
@@ -117,6 +133,7 @@ const Settings = () => {
                 id="push-notifications"
                 checked={notifications?.push_notifications ?? true}
                 onCheckedChange={(checked) => handleNotificationChange('push_notifications', checked)}
+                disabled={updateNotifications.isPending}
               />
             </div>
             
@@ -129,6 +146,7 @@ const Settings = () => {
                 id="email-notifications"
                 checked={notifications?.email_notifications ?? false}
                 onCheckedChange={(checked) => handleNotificationChange('email_notifications', checked)}
+                disabled={updateNotifications.isPending}
               />
             </div>
             
@@ -141,6 +159,7 @@ const Settings = () => {
                 id="transaction-notifications"
                 checked={notifications?.transaction_notifications ?? true}
                 onCheckedChange={(checked) => handleNotificationChange('transaction_notifications', checked)}
+                disabled={updateNotifications.isPending}
               />
             </div>
             
@@ -153,6 +172,7 @@ const Settings = () => {
                 id="shared-wallet-notifications"
                 checked={notifications?.shared_wallet_notifications ?? true}
                 onCheckedChange={(checked) => handleNotificationChange('shared_wallet_notifications', checked)}
+                disabled={updateNotifications.isPending}
               />
             </div>
             
@@ -165,6 +185,7 @@ const Settings = () => {
                 id="backup-notifications"
                 checked={notifications?.backup_notifications ?? true}
                 onCheckedChange={(checked) => handleNotificationChange('backup_notifications', checked)}
+                disabled={updateNotifications.isPending}
               />
             </div>
           </CardContent>
@@ -174,7 +195,7 @@ const Settings = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              {theme === "light" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              {actualTheme === "light" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               <span>Tampilan</span>
             </CardTitle>
           </CardHeader>
@@ -212,8 +233,16 @@ const Settings = () => {
                 <p className="font-medium">Export Semua Data</p>
                 <p className="text-sm text-gray-500">Download semua dompet dan transaksi</p>
               </div>
-              <Button variant="outline" onClick={() => handleExport('all')}>
-                <Download className="h-4 w-4 mr-2" />
+              <Button 
+                variant="outline" 
+                onClick={() => handleExport('all')}
+                disabled={exportLoading === 'all'}
+              >
+                {exportLoading === 'all' ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
                 Export
               </Button>
             </div>
@@ -223,8 +252,16 @@ const Settings = () => {
                 <p className="font-medium">Export Dompet</p>
                 <p className="text-sm text-gray-500">Download data dompet saja</p>
               </div>
-              <Button variant="outline" onClick={() => handleExport('wallets')}>
-                <Download className="h-4 w-4 mr-2" />
+              <Button 
+                variant="outline" 
+                onClick={() => handleExport('wallets')}
+                disabled={exportLoading === 'wallets'}
+              >
+                {exportLoading === 'wallets' ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
                 Export
               </Button>
             </div>
@@ -234,8 +271,16 @@ const Settings = () => {
                 <p className="font-medium">Export Transaksi</p>
                 <p className="text-sm text-gray-500">Download data transaksi saja</p>
               </div>
-              <Button variant="outline" onClick={() => handleExport('transactions')}>
-                <Download className="h-4 w-4 mr-2" />
+              <Button 
+                variant="outline" 
+                onClick={() => handleExport('transactions')}
+                disabled={exportLoading === 'transactions'}
+              >
+                {exportLoading === 'transactions' ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
                 Export
               </Button>
             </div>
@@ -256,7 +301,7 @@ const Settings = () => {
                 <p className="font-medium">FAQ</p>
                 <p className="text-sm text-gray-500">Pertanyaan yang sering diajukan</p>
               </div>
-              <Button variant="outline">
+              <Button variant="outline" onClick={() => navigate('/faq')}>
                 Lihat
               </Button>
             </div>
@@ -266,7 +311,7 @@ const Settings = () => {
                 <p className="font-medium">Kontak Support</p>
                 <p className="text-sm text-gray-500">Hubungi tim dukungan kami</p>
               </div>
-              <Button variant="outline">
+              <Button variant="outline" onClick={() => navigate('/contact-support')}>
                 Kontak
               </Button>
             </div>
@@ -276,7 +321,7 @@ const Settings = () => {
                 <p className="font-medium">Privacy Policy</p>
                 <p className="text-sm text-gray-500">Kebijakan privasi aplikasi</p>
               </div>
-              <Button variant="outline">
+              <Button variant="outline" onClick={() => navigate('/privacy-policy')}>
                 Baca
               </Button>
             </div>
@@ -297,8 +342,17 @@ const Settings = () => {
                 <p className="font-medium text-red-600">Hapus Akun</p>
                 <p className="text-sm text-gray-500">Hapus akun dan semua data secara permanen</p>
               </div>
-              <Button variant="destructive" size="sm">
-                <Trash2 className="h-4 w-4 mr-2" />
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={handleDeleteAccount}
+                disabled={deleteAccount.isPending}
+              >
+                {deleteAccount.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-2" />
+                )}
                 Hapus
               </Button>
             </div>

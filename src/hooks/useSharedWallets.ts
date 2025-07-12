@@ -65,13 +65,11 @@ export const useShareWallet = () => {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) throw new Error('Anda harus login');
 
-      // Search for user in profiles table by full_name or check in auth.users
-      // Since we can't directly query auth.users, we'll search profiles first
+      // Search for user in profiles table by full_name or email-like pattern
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
         .select('id, full_name')
-        .or(`full_name.ilike.%${userEmail}%`)
-        .limit(5);
+        .or(`full_name.ilike.%${userEmail}%,full_name.eq.${userEmail}`);
       
       if (profileError) throw profileError;
 
@@ -79,22 +77,45 @@ export const useShareWallet = () => {
 
       // Check if we found a profile that matches
       if (profiles && profiles.length > 0) {
-        // For exact email match or similar name match
+        // For exact match (case insensitive)
         const exactMatch = profiles.find(p => 
-          p.full_name?.toLowerCase() === userEmail.toLowerCase()
+          p.full_name?.toLowerCase().trim() === userEmail.toLowerCase().trim()
         );
         
         if (exactMatch) {
           targetUserId = exactMatch.id;
         } else if (profiles.length === 1) {
+          // If only one result, use it
           targetUserId = profiles[0].id;
         } else {
-          throw new Error('Ditemukan beberapa pengguna dengan nama serupa. Gunakan nama lengkap yang tepat.');
+          // Multiple matches found
+          const suggestion = profiles.map(p => p.full_name).join(', ');
+          throw new Error(`Ditemukan beberapa pengguna: ${suggestion}. Gunakan nama lengkap yang tepat.`);
+        }
+      }
+
+      // If no match found by name, try to search by pattern matching
+      if (!targetUserId) {
+        const { data: partialProfiles, error: partialError } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .ilike('full_name', `%${userEmail}%`)
+          .limit(10);
+
+        if (partialError) throw partialError;
+
+        if (partialProfiles && partialProfiles.length > 0) {
+          if (partialProfiles.length === 1) {
+            targetUserId = partialProfiles[0].id;
+          } else {
+            const suggestions = partialProfiles.map(p => p.full_name).slice(0, 3).join(', ');
+            throw new Error(`Pengguna tidak ditemukan persis. Apakah maksud Anda: ${suggestions}?`);
+          }
         }
       }
 
       if (!targetUserId) {
-        throw new Error('Pengguna tidak ditemukan. Pastikan nama atau email sudah terdaftar.');
+        throw new Error('Pengguna tidak ditemukan. Pastikan nama lengkap atau email sudah terdaftar di aplikasi.');
       }
 
       // Check if user is trying to share with themselves
