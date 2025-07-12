@@ -19,14 +19,15 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useNotifications } from "@/hooks/useNotifications";
+import { useNotifications, useUpdateNotifications } from "@/hooks/useNotifications";
 import { useExportData } from "@/hooks/useExportData";
 import BottomNavigation from "@/components/BottomNavigation";
 
 const Settings = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { data: notifications, updateNotifications } = useNotifications();
+  const { data: notifications } = useNotifications();
+  const updateNotifications = useUpdateNotifications();
   const { exportData } = useExportData();
   const [theme, setTheme] = useState("light");
 
@@ -42,7 +43,6 @@ const Settings = () => {
   const handleNotificationChange = (key: string, value: boolean) => {
     if (notifications) {
       updateNotifications.mutate({
-        ...notifications,
         [key]: value
       });
     }
