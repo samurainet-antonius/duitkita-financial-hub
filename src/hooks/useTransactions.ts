@@ -56,6 +56,8 @@ export const useWalletTransactions = (walletId?: string) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      const currentUserId = user.id;
+      
       let query = supabase
         .from('transactions')
         .select(`
@@ -99,7 +101,8 @@ export const useWalletTransactions = (walletId?: string) => {
       // 4. Gabungkan profil ke transaksi
       const transactionsWithProfiles = transactions.map(tx => ({
         ...tx,
-        user: profiles?.find(p => p.id === tx.user_id) || null
+        user: profiles?.find(p => p.id === tx.user_id) || null,
+        isOwner: tx.user_id === currentUserId, // ✅ Tambahkan info isOwner
       }));
 
       return transactionsWithProfiles;
