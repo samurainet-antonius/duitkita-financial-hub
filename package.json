@@ -1,9 +1,8 @@
 {
   "name": "vite_react_shadcn_ts",
   "private": true,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "type": "module",
-  "homepage": "https://samurainet-antonius.github.io/duitkita-financial-hub",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

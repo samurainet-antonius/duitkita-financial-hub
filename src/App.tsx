@@ -2,7 +2,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -36,7 +36,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <AuthProvider> {/* 🆕 Tambahkan di sini */}
-          <HashRouter>
+          <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
@@ -59,7 +59,7 @@ function App() {
               <Route path="/contact-support" element={<ProtectedRoute><ContactSupport /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </HashRouter>
+          </BrowserRouter>
           </AuthProvider>
         </TooltipProvider>
       {/* </ThemeProvider> */}

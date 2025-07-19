@@ -1,9 +1,9 @@
 
 -- Add receipt_url column to transactions table
-ALTER TABLE public.transactions ADD COLUMN receipt_url text;
+ALTER TABLE duitkita.transactions ADD COLUMN receipt_url text;
 
 -- Create storage bucket for transaction receipts
-INSERT INTO storage.buckets (id, name, public)
+INSERT INTO storage.buckets (id, name, duitkita)
 VALUES ('transaction-receipts', 'transaction-receipts', true);
 
 -- Create storage policy for transaction receipts

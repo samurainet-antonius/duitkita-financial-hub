@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useNotifications, useUpdateNotifications } from "@/hooks/useNotifications";
 import { useExportData } from "@/hooks/useExportData";
 import { useDeleteAccount } from "@/hooks/useDeleteAccount";
 import BottomNavigation from "@/components/BottomNavigation";
@@ -28,8 +27,6 @@ import BottomNavigation from "@/components/BottomNavigation";
 const Settings = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { data: notifications } = useNotifications();
-  const updateNotifications = useUpdateNotifications();
   const { exportData } = useExportData();
   const deleteAccount = useDeleteAccount();
   const [exportLoading, setExportLoading] = useState<string | null>(null);

@@ -1,6 +1,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabasePublic } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 
@@ -12,10 +12,10 @@ export const useProfile = () => {
   return useQuery({
     queryKey: ['profile'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await supabasePublic.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { data, error } = await supabase
+      const { data, error } = await supabasePublic
         .from('profiles')
         .select('*')
         .eq('id', user.id)
@@ -33,10 +33,10 @@ export const useUpdateProfile = () => {
 
   return useMutation({
     mutationFn: async (updates: ProfileUpdate) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await supabasePublic.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { data, error } = await supabase
+      const { data, error } = await supabasePublic
         .from('profiles')
         .update(updates)
         .eq('id', user.id)

@@ -1,6 +1,6 @@
 
 -- Create notifications table to store user notification preferences
-CREATE TABLE public.user_notifications (
+CREATE TABLE duitkita.user_notifications (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users NOT NULL,
   push_notifications BOOLEAN DEFAULT true,
@@ -13,31 +13,31 @@ CREATE TABLE public.user_notifications (
 );
 
 -- Add RLS policies for notifications
-ALTER TABLE public.user_notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE duitkita.user_notifications ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view their own notification settings" 
-  ON public.user_notifications 
+  ON duitkita.user_notifications 
   FOR SELECT 
   USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can update their own notification settings" 
-  ON public.user_notifications 
+  ON duitkita.user_notifications 
   FOR UPDATE 
   USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can insert their own notification settings" 
-  ON public.user_notifications 
+  ON duitkita.user_notifications 
   FOR INSERT 
   WITH CHECK (auth.uid() = user_id);
 
 -- Create function to automatically create notification preferences for new users
-CREATE OR REPLACE FUNCTION public.handle_new_user_notifications()
+CREATE OR REPLACE FUNCTION duitkita.handle_new_user_notifications()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
-  INSERT INTO public.user_notifications (user_id)
+  INSERT INTO duitkita.user_notifications (user_id)
   VALUES (NEW.id);
   RETURN NEW;
 END;
@@ -47,7 +47,7 @@ $$;
 CREATE TRIGGER on_auth_user_created_notifications
   AFTER INSERT ON auth.users
   FOR EACH ROW 
-  EXECUTE PROCEDURE public.handle_new_user_notifications();
+  EXECUTE PROCEDURE duitkita.handle_new_user_notifications();
 
 -- Enable pg_cron extension for scheduled tasks
 CREATE EXTENSION IF NOT EXISTS pg_cron;

@@ -175,13 +175,13 @@ const Wallets = () => {
           
           {wallets.map((wallet) => {
             const Icon = getWalletIcon(wallet.type);
+            console.log(wallet.color)
             return (
               <Card key={wallet.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-4">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center`} 
-                           style={{ backgroundColor: wallet.color || '#3B82F6' }}>
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${wallet.color || 'bg-blue-600'}`}>
                         <Icon className="h-6 w-6 text-white" />
                       </div>
                       <div>
