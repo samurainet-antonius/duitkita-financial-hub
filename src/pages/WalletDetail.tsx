@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Edit, Trash2, Plus, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useWallets, useDeleteWallet } from "@/hooks/useWallets";
-import { useTransactions } from "@/hooks/useTransactions";
-import { useSharedWallets } from "@/hooks/useSharedWallets";
+import { useWalletTransactions } from "@/hooks/useTransactions";
+import { usedWalletShared } from "@/hooks/useSharedWallets";
 import { getWalletIcon } from "@/utils/walletIcons";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -16,15 +16,25 @@ const WalletDetail = () => {
   const { user } = useAuth();
   
   const { data: wallets = [] } = useWallets();
-  const { data: transactions = [] } = useTransactions(id);
-  const { data: sharedAccess = [] } = useSharedWallets(id);
+  const { data: transactions = [] } = useWalletTransactions(id);
+  const { data: sharedAccess = [] } = usedWalletShared(id);
   const deleteWallet = useDeleteWallet();
 
-  const wallet = wallets.find(w => w.id === id);
+  const mappedSharedWallets = sharedAccess.map((shared) => ({
+    ...shared.wallets,
+    isShared: true,
+  }));
+
+  console.log(transactions)
+
+  const allWallets = [...wallets, ...mappedSharedWallets];
+
+  // Ambil wallet dari gabungan wallets dan shared
+  const wallet = allWallets.find(w => w.id === id);
   const recentTransactions = transactions.slice(0, 5);
 
   // Check if current user is the owner
-  const isOwner = wallet?.user_id === user?.id;
+  const isOwner = wallets.some(w => w.id === wallet?.id);
 
   if (!wallet) {
     return (
@@ -228,7 +238,12 @@ const WalletDetail = () => {
                         <p className="font-medium text-gray-900">
                           {transaction.categories?.name || 'Kategori'}
                         </p>
-                        <p className="text-sm text-gray-500">{transaction.description}</p>
+                        <p className="text-sm text-gray-500">
+                          {transaction.description} <br />
+                          <span className="text-xs text-gray-400">
+                            Oleh: {transaction.user?.full_name || 'Tidak diketahui'}
+                          </span>
+                        </p>
                         <p className="text-xs text-gray-400">{transaction.date} • {transaction.time}</p>
                       </div>
                     </div>

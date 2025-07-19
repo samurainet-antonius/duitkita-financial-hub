@@ -13,14 +13,29 @@ import { useWallets } from "@/hooks/useWallets";
 import { useCategories } from "@/hooks/useCategories";
 import { validateRequired, validateAmount } from "@/utils/validation";
 import { getWalletIcon } from "@/utils/walletIcons";
+import { useSharedWallets } from "@/hooks/useSharedWallets"; // asumsi ada
 
 const AddTransaction = () => {
   const navigate = useNavigate();
   const createTransaction = useCreateTransaction();
   const { data: wallets = [] } = useWallets();
+  const { data: sharedWallets = [] } = useSharedWallets();
   const { data: categories = [] } = useCategories();
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+
+  const mappedSharedWallets = sharedWallets.map((shared) => ({
+    ...shared.wallets,
+    isShared: true,
+  }));
+
+  const allWalletsMap = new Map();
+
+  [...wallets, ...mappedSharedWallets].forEach(wallet => {
+    allWalletsMap.set(wallet.id, wallet); // overwrite jika ID sama
+  });
+
+  const allWallets = Array.from(allWalletsMap.values());
   
   const [formData, setFormData] = useState({
     type: "expense",
@@ -154,7 +169,7 @@ const AddTransaction = () => {
     formData.type === 'income' ? cat.type === 'income' : cat.type === 'expense'
   );
 
-  const availableToWallets = wallets.filter(wallet => wallet.id !== formData.wallet_id);
+  const availableToWallets = allWallets.filter(wallet => wallet.id !== formData.wallet_id);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -244,7 +259,7 @@ const AddTransaction = () => {
                     <SelectValue placeholder="Pilih dompet" />
                   </SelectTrigger>
                   <SelectContent>
-                    {wallets.map((wallet) => {
+                    {allWallets.map((wallet) => {
                       const WalletIcon = getWalletIcon(wallet.type, wallet.name);
                       return (
                         <SelectItem key={wallet.id} value={wallet.id}>

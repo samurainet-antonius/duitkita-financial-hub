@@ -1,6 +1,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, supabasePublic } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables, TablesInsert } from '@/integrations/supabase/types';
 
@@ -11,6 +11,67 @@ export const useSharedWallets = (walletId?: string) => {
   return useQuery({
     queryKey: ['shared-wallets', walletId],
     queryFn: async () => {
+      // Ambil user aktif
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) throw new Error("User not authenticated");
+
+      let query = supabase
+        .from('shared_wallets')
+        .select(`
+          *,
+          wallets (
+            id,
+            name,
+            type,
+            balance,
+            color,
+            icon
+          )
+        `)
+        .eq('user_id', user.id);  // pastikan bukan pemilik
+      
+      if (walletId) {
+        query = query.eq('wallet_id', walletId);
+      }
+      
+      const { data: sharedWallets, error } = await query.order('created_at', { ascending: false });
+      
+      if (error) throw error;
+
+      // Fetch profile data separately for each shared wallet
+      const walletsWithProfiles = await Promise.all(
+        (sharedWallets || []).map(async (wallet) => {
+          const { data: profile } = await supabasePublic
+            .from('profiles')
+            .select('id, full_name')
+            .eq('id', wallet.user_id)
+            .single();
+          
+          return {
+            ...wallet,
+            isShared: true,
+            role: wallet.role,         // ⬅️ Ini penting
+            sharedBy: profile,  
+          };
+        })
+      );
+      
+      return walletsWithProfiles;
+    },
+    enabled: !!walletId || walletId === undefined,
+  });
+};
+
+export const usedWalletShared = (walletId?: string) => {
+  return useQuery({
+    queryKey: ['shared-wallets', walletId],
+    queryFn: async () => {
+      // Ambil user aktif
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) throw new Error("User not authenticated");
+
       let query = supabase
         .from('shared_wallets')
         .select(`
@@ -29,14 +90,14 @@ export const useSharedWallets = (walletId?: string) => {
         query = query.eq('wallet_id', walletId);
       }
       
-      const { data: sharedWallets, error } = await query.order('created_at', { ascending: false });
+      const { data: sharedWallets, error } = await query.neq('role', 'owner').order('created_at', { ascending: false });
       
       if (error) throw error;
 
       // Fetch profile data separately for each shared wallet
       const walletsWithProfiles = await Promise.all(
         (sharedWallets || []).map(async (wallet) => {
-          const { data: profile } = await supabase
+          const { data: profile } = await supabasePublic
             .from('profiles')
             .select('id, full_name')
             .eq('id', wallet.user_id)
@@ -44,7 +105,8 @@ export const useSharedWallets = (walletId?: string) => {
           
           return {
             ...wallet,
-            profiles: profile
+            isShared: true,         // ⬅️ Ini penting
+            sharedBy: profile,  
           };
         })
       );
@@ -66,10 +128,10 @@ export const useShareWallet = () => {
       if (!currentUser) throw new Error('Anda harus login');
 
       // Search for user in profiles table by full_name or email-like pattern
-      const { data: profiles, error: profileError } = await supabase
+      const { data: profiles, error: profileError } = await supabasePublic
         .from('profiles')
-        .select('id, full_name')
-        .or(`full_name.ilike.%${userEmail}%,full_name.eq.${userEmail}`);
+        .select('id, full_name, email')
+        .eq(`email`, userEmail);
       
       if (profileError) throw profileError;
 
@@ -96,7 +158,7 @@ export const useShareWallet = () => {
 
       // If no match found by name, try to search by pattern matching
       if (!targetUserId) {
-        const { data: partialProfiles, error: partialError } = await supabase
+        const { data: partialProfiles, error: partialError } = await supabasePublic
           .from('profiles')
           .select('id, full_name')
           .ilike('full_name', `%${userEmail}%`)

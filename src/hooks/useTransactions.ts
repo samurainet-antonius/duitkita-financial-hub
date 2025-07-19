@@ -1,6 +1,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, supabasePublic } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useSendTransactionNotification } from './useTransactionNotifications';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
@@ -45,6 +45,64 @@ export const useTransactions = (walletId?: string) => {
 
       if (error) throw error;
       return data;
+    },
+  });
+};
+
+export const useWalletTransactions = (walletId?: string) => {
+  return useQuery({
+    queryKey: ['transactions', walletId],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      let query = supabase
+        .from('transactions')
+        .select(`
+          *,
+          categories (
+            name,
+            id
+          ),
+          wallets!transactions_wallet_id_fkey (
+            name,
+            id
+          ),
+          to_wallets:wallets!transactions_to_wallet_id_fkey (
+            name,
+            id
+          )
+        `)
+        .order('date', { ascending: false })
+        .order('time', { ascending: false });
+
+      if (walletId) {
+        query = query.eq('wallet_id', walletId);
+      }
+
+      const { data: transactions, error } = await query;
+
+      if (error) throw error;
+      if (!transactions || transactions.length === 0) return [];
+
+      // 2. Ambil user_id unik dari transaksi
+      const userIds = [...new Set(transactions.map(tx => tx.user_id).filter(Boolean))];
+
+      // 3. Ambil data profil dari schema public
+      const { data: profiles, error: profileError } = await supabasePublic
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', userIds);
+
+      if (profileError) throw profileError;
+
+      // 4. Gabungkan profil ke transaksi
+      const transactionsWithProfiles = transactions.map(tx => ({
+        ...tx,
+        user: profiles?.find(p => p.id === tx.user_id) || null
+      }));
+
+      return transactionsWithProfiles;
     },
   });
 };

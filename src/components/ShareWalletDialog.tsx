@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Share2, Trash2, Users, User, Loader2 } from 'lucide-react';
-import { useShareWallet, useSharedWallets, useRemoveSharedAccess } from '@/hooks/useSharedWallets';
+import { useShareWallet, usedWalletShared, useRemoveSharedAccess } from '@/hooks/useSharedWallets';
 
 interface ShareWalletDialogProps {
   walletId: string;
@@ -17,7 +17,7 @@ export const ShareWalletDialog = ({ walletId, walletName }: ShareWalletDialogPro
   const [isOpen, setIsOpen] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   
-  const { data: sharedAccess = [] } = useSharedWallets(walletId);
+  const { data: sharedAccess = [] } = usedWalletShared(walletId);
   const shareWallet = useShareWallet();
   const removeAccess = useRemoveSharedAccess();
 
@@ -71,7 +71,7 @@ export const ShareWalletDialog = ({ walletId, walletName }: ShareWalletDialogPro
               <Input
                 id="userEmail"
                 type="text"
-                placeholder="Contoh: John Doe atau john@email.com"
+                placeholder="Contoh: john@email.com"
                 value={userEmail}
                 onChange={(e) => setUserEmail(e.target.value)}
                 required
@@ -110,7 +110,7 @@ export const ShareWalletDialog = ({ walletId, walletName }: ShareWalletDialogPro
                         </div>
                         <div>
                           <p className="text-sm font-medium">
-                            {access.profiles?.full_name || 'Pengguna'}
+                            {access.sharedBy?.full_name || 'Pengguna'}
                           </p>
                           <Badge variant="secondary" className="text-xs">
                             {access.role === 'user' ? 'Dapat Transaksi' : access.role}

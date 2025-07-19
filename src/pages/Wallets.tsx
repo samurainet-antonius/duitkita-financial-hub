@@ -9,13 +9,29 @@ import BottomNavigation from "@/components/BottomNavigation";
 import { ShareWalletDialog } from "@/components/ShareWalletDialog";
 import { useWallets } from "@/hooks/useWallets";
 import { useTransactions } from "@/hooks/useTransactions";
+import { useSharedWallets } from "@/hooks/useSharedWallets";
 
 const Wallets = () => {
   const navigate = useNavigate();
   const [showBalance, setShowBalance] = useState(true);
   
   const { data: wallets = [], isLoading: walletsLoading } = useWallets();
+  const { data: sharedWallets = [] } = useSharedWallets();
   const { data: recentTransactions = [] } = useTransactions();
+
+  const mappedSharedWallets = sharedWallets.map((shared) => ({
+    ...shared.wallets,
+    isShared: true,
+    role: shared.role,
+  }));
+
+  const allWalletsMap = new Map();
+
+  [...wallets, ...mappedSharedWallets].forEach(wallet => {
+    allWalletsMap.set(wallet.id, wallet); // overwrite jika ID sama
+  });
+
+  const allWallets = Array.from(allWalletsMap.values());
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -70,7 +86,7 @@ const Wallets = () => {
     }
   };
 
-  const totalBalance = wallets.reduce((sum, wallet) => sum + (wallet.balance || 0), 0);
+  const totalBalance = allWallets.reduce((sum, wallet) => sum + (wallet.balance || 0), 0);
 
   if (walletsLoading) {
     return (
@@ -118,7 +134,7 @@ const Wallets = () => {
                 <p className="text-2xl font-bold">
                   {showBalance ? formatCurrency(totalBalance) : "••••••••"}
                 </p>
-                <p className="text-emerald-200 text-sm">{wallets.length} akun aktif</p>
+                <p className="text-emerald-200 text-sm">{allWallets.length} akun aktif</p>
               </div>
               <Wallet className="h-8 w-8 text-emerald-200" />
             </div>
@@ -143,7 +159,7 @@ const Wallets = () => {
               <Building className="h-6 w-6 mx-auto mb-2 text-blue-600" />
               <p className="text-sm text-gray-600">Bank</p>
               <p className="font-semibold text-blue-600">
-                {wallets.filter(w => w.type === 'bank').length}
+                {allWallets.filter(w => w.type === 'bank').length}
               </p>
             </CardContent>
           </Card>
@@ -173,9 +189,8 @@ const Wallets = () => {
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-gray-900">Semua Dompet</h2>
           
-          {wallets.map((wallet) => {
+          {allWallets.map((wallet) => {
             const Icon = getWalletIcon(wallet.type);
-            console.log(wallet.color)
             return (
               <Card key={wallet.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
@@ -203,10 +218,16 @@ const Wallets = () => {
                   </div>
                   
                   <div className="flex justify-between items-center">
-                    <ShareWalletDialog 
-                      walletId={wallet.id} 
-                      walletName={wallet.name} 
-                    />
+                    {!wallet.isShared || wallet.role == "owner" ? (
+                      <ShareWalletDialog 
+                        walletId={wallet.id} 
+                        walletName={wallet.name} 
+                      />
+                    ):(
+                      <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-600">
+                        Dibagikan ke Saya
+                      </Badge>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -221,7 +242,7 @@ const Wallets = () => {
           })}
         </div>
 
-        {wallets.length === 0 && (
+        {allWallets.length === 0 && (
           <Card>
             <CardContent className="p-8 text-center">
               <Wallet className="h-12 w-12 mx-auto mb-4 text-gray-400" />

@@ -22,6 +22,7 @@ import { useWallets } from "@/hooks/useWallets";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/hooks/useAuth";
+import { useSharedWallets } from "@/hooks/useSharedWallets";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -31,6 +32,7 @@ const Dashboard = () => {
   const [selectedWallet, setSelectedWallet] = useState("all");
 
   const { data: wallets = [] } = useWallets();
+  const { data: sharedWallets = [] } = useSharedWallets();
   const { data: transactions = [] } = useTransactions();
   const { data: categories = [] } = useCategories();
 
@@ -42,8 +44,21 @@ const Dashboard = () => {
     }).format(amount);
   };
 
+  const mappedSharedWallets = sharedWallets.map((shared) => ({
+    ...shared.wallets,
+    isShared: true,
+  }));
+
+  const allWalletsMap = new Map();
+
+  [...wallets, ...mappedSharedWallets].forEach(wallet => {
+    allWalletsMap.set(wallet.id, wallet); // overwrite jika ID sama
+  });
+
+  const allWallets = Array.from(allWalletsMap.values());
+
   // Calculate totals
-  const totalBalance = wallets.reduce((sum, wallet) => sum + (wallet.balance || 0), 0);
+  const totalBalance = allWallets.reduce((sum, wallet) => sum + (wallet.balance || 0), 0);
   const totalIncome = transactions
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
